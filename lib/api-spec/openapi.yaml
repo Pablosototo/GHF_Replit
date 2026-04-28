@@ -3,20 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: GHF Inventarios API
 servers:
   - url: /api
     description: Base API path
 tags:
-  - name: health
-    description: Health operations
+  - name: auth
+  - name: dashboard
+  - name: sociedades
+  - name: marcas
+  - name: locales
+  - name: categorias
+  - name: productos
+  - name: stock
+  - name: pedidos
+  - name: facturas
+  - name: usuarios
+  - name: reportes
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
-      tags: [health]
+      tags: [dashboard]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +34,1064 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ------------------ AUTH ------------------
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Cerrar sesión
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Usuario autenticado
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ------------------ DASHBOARD ------------------
+  /dashboard/resumen:
+    get:
+      operationId: getDashboardResumen
+      tags: [dashboard]
+      summary: Métricas resumen
+      parameters:
+        - in: query
+          name: dias
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardResumen"
+
+  /dashboard/ventas-por-dia:
+    get:
+      operationId: getVentasPorDia
+      tags: [dashboard]
+      summary: Serie de ventas por día
+      parameters:
+        - in: query
+          name: dias
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VentaPorDia" }
+
+  /dashboard/top-productos:
+    get:
+      operationId: getTopProductos
+      tags: [dashboard]
+      summary: Productos más vendidos
+      parameters:
+        - in: query
+          name: dias
+          schema: { type: integer, default: 30 }
+        - in: query
+          name: limite
+          schema: { type: integer, default: 5 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TopProducto" }
+
+  /dashboard/ventas-por-local:
+    get:
+      operationId: getVentasPorLocal
+      tags: [dashboard]
+      summary: Ventas agrupadas por local
+      parameters:
+        - in: query
+          name: dias
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VentaPorLocal" }
+
+  /dashboard/stock-bajo:
+    get:
+      operationId: getStockBajo
+      tags: [dashboard]
+      summary: Productos con stock bajo
+      parameters:
+        - in: query
+          name: limite
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StockBajoItem" }
+
+  /dashboard/actividad-reciente:
+    get:
+      operationId: getActividadReciente
+      tags: [dashboard]
+      summary: Últimos pedidos y facturas
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ActividadItem" }
+
+  # ------------------ SOCIEDADES ------------------
+  /sociedades:
+    get:
+      operationId: listSociedades
+      tags: [sociedades]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Sociedad" }
+    post:
+      operationId: createSociedad
+      tags: [sociedades]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SociedadInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sociedad" }
+
+  /sociedades/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      operationId: getSociedad
+      tags: [sociedades]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sociedad" }
+    put:
+      operationId: updateSociedad
+      tags: [sociedades]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SociedadInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sociedad" }
+    delete:
+      operationId: deleteSociedad
+      tags: [sociedades]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  # ------------------ MARCAS ------------------
+  /marcas:
+    get:
+      operationId: listMarcas
+      tags: [marcas]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Marca" }
+    post:
+      operationId: createMarca
+      tags: [marcas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarcaInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Marca" }
+
+  /marcas/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      operationId: getMarca
+      tags: [marcas]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Marca" }
+    put:
+      operationId: updateMarca
+      tags: [marcas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarcaInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Marca" }
+    delete:
+      operationId: deleteMarca
+      tags: [marcas]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  # ------------------ LOCALES ------------------
+  /locales:
+    get:
+      operationId: listLocales
+      tags: [locales]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Local" }
+    post:
+      operationId: createLocal
+      tags: [locales]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LocalInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Local" }
+
+  /locales/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      operationId: getLocal
+      tags: [locales]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Local" }
+    put:
+      operationId: updateLocal
+      tags: [locales]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LocalInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Local" }
+    delete:
+      operationId: deleteLocal
+      tags: [locales]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  # ------------------ CATEGORIAS ------------------
+  /categorias:
+    get:
+      operationId: listCategorias
+      tags: [categorias]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Categoria" }
+    post:
+      operationId: createCategoria
+      tags: [categorias]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoriaInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Categoria" }
+
+  /categorias/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    put:
+      operationId: updateCategoria
+      tags: [categorias]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoriaInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Categoria" }
+    delete:
+      operationId: deleteCategoria
+      tags: [categorias]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  # ------------------ PRODUCTOS ------------------
+  /productos:
+    get:
+      operationId: listProductos
+      tags: [productos]
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: categoriaId
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Producto" }
+    post:
+      operationId: createProducto
+      tags: [productos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductoInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Producto" }
+
+  /productos/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      operationId: getProducto
+      tags: [productos]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Producto" }
+    put:
+      operationId: updateProducto
+      tags: [productos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductoInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Producto" }
+    delete:
+      operationId: deleteProducto
+      tags: [productos]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  # ------------------ STOCK ------------------
+  /stock:
+    get:
+      operationId: listStock
+      tags: [stock]
+      parameters:
+        - in: query
+          name: localId
+          schema: { type: integer }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StockItem" }
+
+  /stock/movimientos:
+    get:
+      operationId: listMovimientos
+      tags: [stock]
+      parameters:
+        - in: query
+          name: localId
+          schema: { type: integer }
+        - in: query
+          name: limite
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Movimiento" }
+    post:
+      operationId: createMovimiento
+      tags: [stock]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MovimientoInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Movimiento" }
+
+  # ------------------ PEDIDOS ------------------
+  /pedidos:
+    get:
+      operationId: listPedidos
+      tags: [pedidos]
+      parameters:
+        - in: query
+          name: estado
+          schema: { type: string }
+        - in: query
+          name: localId
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Pedido" }
+    post:
+      operationId: createPedido
+      tags: [pedidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PedidoInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pedido" }
+
+  /pedidos/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      operationId: getPedido
+      tags: [pedidos]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pedido" }
+    delete:
+      operationId: anularPedido
+      tags: [pedidos]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  /pedidos/{id}/facturar:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    post:
+      operationId: facturarPedido
+      tags: [pedidos]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Factura" }
+
+  # ------------------ FACTURAS ------------------
+  /facturas:
+    get:
+      operationId: listFacturas
+      tags: [facturas]
+      parameters:
+        - in: query
+          name: localId
+          schema: { type: integer }
+        - in: query
+          name: estado
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Factura" }
+
+  /facturas/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      operationId: getFactura
+      tags: [facturas]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Factura" }
+
+  # ------------------ USUARIOS ------------------
+  /usuarios:
+    get:
+      operationId: listUsuarios
+      tags: [usuarios]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Usuario" }
+    post:
+      operationId: createUsuario
+      tags: [usuarios]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UsuarioInput" }
+      responses:
+        "201":
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usuario" }
+
+  /usuarios/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    put:
+      operationId: updateUsuario
+      tags: [usuarios]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UsuarioInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usuario" }
+    delete:
+      operationId: deleteUsuario
+      tags: [usuarios]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
 components:
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
+      required: [status]
 
+    Ok:
+      type: object
+      properties:
+        ok: { type: boolean }
+      required: [ok]
+
+    ApiError:
+      type: object
+      properties:
+        message: { type: string }
+      required: [message]
+
+    LoginBody:
+      type: object
+      properties:
+        username: { type: string }
+        password: { type: string }
+      required: [username, password]
+
+    SessionUser:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        username: { type: string }
+        email: { type: string, nullable: true }
+        role: { type: string }
+        localId: { type: integer, nullable: true }
+        localNombre: { type: string, nullable: true }
+      required: [id, name, username, role]
+
+    Sociedad:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        cedulaJuridica: { type: string, nullable: true }
+        correo: { type: string, nullable: true }
+        telefono: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        activo: { type: boolean }
+        localesCount: { type: integer }
+      required: [id, nombre, activo, localesCount]
+
+    SociedadInput:
+      type: object
+      properties:
+        nombre: { type: string }
+        cedulaJuridica: { type: string, nullable: true }
+        correo: { type: string, nullable: true }
+        telefono: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        activo: { type: boolean }
+      required: [nombre]
+
+    Marca:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        slug: { type: string, nullable: true }
+        activo: { type: boolean }
+        localesCount: { type: integer }
+      required: [id, nombre, activo, localesCount]
+
+    MarcaInput:
+      type: object
+      properties:
+        nombre: { type: string }
+        slug: { type: string, nullable: true }
+        activo: { type: boolean }
+      required: [nombre]
+
+    Local:
+      type: object
+      properties:
+        id: { type: integer }
+        marcaId: { type: integer, nullable: true }
+        sociedadId: { type: integer, nullable: true }
+        marcaNombre: { type: string, nullable: true }
+        sociedadNombre: { type: string, nullable: true }
+        nombre: { type: string }
+        codigo: { type: string, nullable: true }
+        correo: { type: string, nullable: true }
+        telefono: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        activo: { type: boolean }
+      required: [id, nombre, activo]
+
+    LocalInput:
+      type: object
+      properties:
+        marcaId: { type: integer, nullable: true }
+        sociedadId: { type: integer, nullable: true }
+        nombre: { type: string }
+        codigo: { type: string, nullable: true }
+        correo: { type: string, nullable: true }
+        telefono: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        activo: { type: boolean }
+      required: [nombre]
+
+    Categoria:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        descripcion: { type: string, nullable: true }
+        activo: { type: boolean }
+        productosCount: { type: integer }
+      required: [id, nombre, activo, productosCount]
+
+    CategoriaInput:
+      type: object
+      properties:
+        nombre: { type: string }
+        descripcion: { type: string, nullable: true }
+        activo: { type: boolean }
+      required: [nombre]
+
+    Producto:
+      type: object
+      properties:
+        id: { type: integer }
+        categoriaId: { type: integer, nullable: true }
+        categoriaNombre: { type: string, nullable: true }
+        nombre: { type: string }
+        sku: { type: string, nullable: true }
+        descripcion: { type: string, nullable: true }
+        precio: { type: number }
+        costo: { type: number }
+        stockMinimo: { type: integer }
+        activo: { type: boolean }
+      required: [id, nombre, precio, costo, stockMinimo, activo]
+
+    ProductoInput:
+      type: object
+      properties:
+        categoriaId: { type: integer, nullable: true }
+        nombre: { type: string }
+        sku: { type: string, nullable: true }
+        descripcion: { type: string, nullable: true }
+        precio: { type: number }
+        costo: { type: number }
+        stockMinimo: { type: integer }
+        activo: { type: boolean }
+      required: [nombre, precio]
+
+    StockItem:
+      type: object
+      properties:
+        productoId: { type: integer }
+        productoNombre: { type: string }
+        sku: { type: string, nullable: true }
+        categoriaNombre: { type: string, nullable: true }
+        localId: { type: integer }
+        localNombre: { type: string }
+        cantidad: { type: integer }
+        stockMinimo: { type: integer }
+        estado: { type: string, description: "ok | bajo | agotado" }
+      required: [productoId, productoNombre, localId, localNombre, cantidad, stockMinimo, estado]
+
+    Movimiento:
+      type: object
+      properties:
+        id: { type: integer }
+        productoId: { type: integer }
+        productoNombre: { type: string }
+        localId: { type: integer }
+        localNombre: { type: string }
+        tipo: { type: string, description: "entrada | salida | ajuste | venta" }
+        cantidad: { type: integer }
+        nota: { type: string, nullable: true }
+        usuarioNombre: { type: string, nullable: true }
+        createdAt: { type: string }
+      required: [id, productoId, productoNombre, localId, localNombre, tipo, cantidad, createdAt]
+
+    MovimientoInput:
+      type: object
+      properties:
+        productoId: { type: integer }
+        localId: { type: integer }
+        tipo: { type: string }
+        cantidad: { type: integer }
+        nota: { type: string, nullable: true }
+      required: [productoId, localId, tipo, cantidad]
+
+    PedidoDetalle:
+      type: object
+      properties:
+        id: { type: integer }
+        productoId: { type: integer }
+        productoNombre: { type: string }
+        cantidad: { type: integer }
+        precioUnitario: { type: number }
+        subtotal: { type: number }
+      required: [id, productoId, productoNombre, cantidad, precioUnitario, subtotal]
+
+    PedidoDetalleInput:
+      type: object
+      properties:
+        productoId: { type: integer }
+        cantidad: { type: integer }
+        precioUnitario: { type: number }
+      required: [productoId, cantidad, precioUnitario]
+
+    Pedido:
+      type: object
+      properties:
+        id: { type: integer }
+        localId: { type: integer, nullable: true }
+        localNombre: { type: string, nullable: true }
+        clienteNombre: { type: string, nullable: true }
+        clienteTelefono: { type: string, nullable: true }
+        clienteEmail: { type: string, nullable: true }
+        observaciones: { type: string, nullable: true }
+        subtotal: { type: number }
+        impuesto: { type: number }
+        total: { type: number }
+        estado: { type: string }
+        createdAt: { type: string }
+        detalles:
+          type: array
+          items: { $ref: "#/components/schemas/PedidoDetalle" }
+      required: [id, subtotal, impuesto, total, estado, createdAt, detalles]
+
+    PedidoInput:
+      type: object
+      properties:
+        localId: { type: integer, nullable: true }
+        clienteNombre: { type: string, nullable: true }
+        clienteTelefono: { type: string, nullable: true }
+        clienteEmail: { type: string, nullable: true }
+        observaciones: { type: string, nullable: true }
+        impuestoPct: { type: number, default: 0 }
+        detalles:
+          type: array
+          items: { $ref: "#/components/schemas/PedidoDetalleInput" }
+      required: [detalles]
+
+    FacturaDetalle:
+      type: object
+      properties:
+        id: { type: integer }
+        productoId: { type: integer, nullable: true }
+        descripcion: { type: string }
+        cantidad: { type: integer }
+        precioUnitario: { type: number }
+        subtotal: { type: number }
+      required: [id, descripcion, cantidad, precioUnitario, subtotal]
+
+    Factura:
+      type: object
+      properties:
+        id: { type: integer }
+        pedidoId: { type: integer, nullable: true }
+        localId: { type: integer, nullable: true }
+        localNombre: { type: string, nullable: true }
+        numeroFactura: { type: string }
+        clienteNombre: { type: string, nullable: true }
+        clienteTelefono: { type: string, nullable: true }
+        clienteEmail: { type: string, nullable: true }
+        fecha: { type: string }
+        subtotal: { type: number }
+        impuesto: { type: number }
+        total: { type: number }
+        estado: { type: string }
+        observaciones: { type: string, nullable: true }
+        detalles:
+          type: array
+          items: { $ref: "#/components/schemas/FacturaDetalle" }
+      required: [id, numeroFactura, fecha, subtotal, impuesto, total, estado, detalles]
+
+    Usuario:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        username: { type: string }
+        email: { type: string, nullable: true }
+        role: { type: string }
+        localId: { type: integer, nullable: true }
+        localNombre: { type: string, nullable: true }
+      required: [id, name, username, role]
+
+    UsuarioInput:
+      type: object
+      properties:
+        name: { type: string }
+        username: { type: string }
+        email: { type: string, nullable: true }
+        password: { type: string, nullable: true }
+        role: { type: string }
+        localId: { type: integer, nullable: true }
+      required: [name, username, role]
+
+    DashboardResumen:
+      type: object
+      properties:
+        ventasTotales: { type: number }
+        pedidosCount: { type: integer }
+        facturasCount: { type: integer }
+        productosCount: { type: integer }
+        ticketPromedio: { type: number }
+        stockBajoCount: { type: integer }
+      required: [ventasTotales, pedidosCount, facturasCount, productosCount, ticketPromedio, stockBajoCount]
+
+    VentaPorDia:
+      type: object
+      properties:
+        fecha: { type: string }
+        total: { type: number }
+        pedidos: { type: integer }
+      required: [fecha, total, pedidos]
+
+    TopProducto:
+      type: object
+      properties:
+        productoId: { type: integer }
+        productoNombre: { type: string }
+        cantidadVendida: { type: integer }
+        ingresos: { type: number }
+      required: [productoId, productoNombre, cantidadVendida, ingresos]
+
+    VentaPorLocal:
+      type: object
+      properties:
+        localId: { type: integer }
+        localNombre: { type: string }
+        marcaNombre: { type: string, nullable: true }
+        total: { type: number }
+        pedidos: { type: integer }
+      required: [localId, localNombre, total, pedidos]
+
+    StockBajoItem:
+      type: object
+      properties:
+        productoId: { type: integer }
+        productoNombre: { type: string }
+        localId: { type: integer }
+        localNombre: { type: string }
+        cantidad: { type: integer }
+        stockMinimo: { type: integer }
+      required: [productoId, productoNombre, localId, localNombre, cantidad, stockMinimo]
+
+    ActividadItem:
+      type: object
+      properties:
+        tipo: { type: string }
+        id: { type: integer }
+        titulo: { type: string }
+        subtitulo: { type: string, nullable: true }
+        monto: { type: number, nullable: true }
+        createdAt: { type: string }
+      required: [tipo, id, titulo, createdAt]

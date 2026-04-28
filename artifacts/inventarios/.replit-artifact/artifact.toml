@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "GHF Inventarios"
+version = "1.0.0"
+id = "artifacts/inventarios"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20034
+
+[services.development]
+run = "pnpm --filter @workspace/inventarios run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/inventarios", "run", "build" ]
+publicDir = "artifacts/inventarios/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20034"
+BASE_PATH = "/"
