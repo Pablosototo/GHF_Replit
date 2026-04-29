@@ -172,6 +172,8 @@ export interface PedidoDetalle {
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
+  impuestoPct: number;
+  impuesto: number;
 }
 
 export interface PedidoDetalleInput {

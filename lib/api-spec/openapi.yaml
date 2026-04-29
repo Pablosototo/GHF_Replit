@@ -1080,7 +1080,9 @@ components:
         cantidad: { type: integer }
         precioUnitario: { type: number }
         subtotal: { type: number }
-      required: [id, productoId, productoNombre, cantidad, precioUnitario, subtotal]
+        impuestoPct: { type: number }
+        impuesto: { type: number }
+      required: [id, productoId, productoNombre, cantidad, precioUnitario, subtotal, impuestoPct, impuesto]
 
     PedidoDetalleInput:
       type: object

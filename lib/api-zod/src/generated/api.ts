@@ -601,6 +601,8 @@ export const ListPedidosResponseItem = zod.object({
       cantidad: zod.number(),
       precioUnitario: zod.number(),
       subtotal: zod.number(),
+      impuestoPct: zod.number(),
+      impuesto: zod.number(),
     }),
   ),
 });
@@ -649,6 +651,8 @@ export const GetPedidoResponse = zod.object({
       cantidad: zod.number(),
       precioUnitario: zod.number(),
       subtotal: zod.number(),
+      impuestoPct: zod.number(),
+      impuesto: zod.number(),
     }),
   ),
 });
@@ -722,6 +726,8 @@ export const CambiarEstadoPedidoResponse = zod.object({
       cantidad: zod.number(),
       precioUnitario: zod.number(),
       subtotal: zod.number(),
+      impuestoPct: zod.number(),
+      impuesto: zod.number(),
     }),
   ),
 });

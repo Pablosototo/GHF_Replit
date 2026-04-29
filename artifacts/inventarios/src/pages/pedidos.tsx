@@ -449,7 +449,21 @@ th.c{text-align:center}
 </table>
 <div class="totals"><div class="totals-box">
   <div class="trow"><span style="color:#666">Subtotal</span><span>${fmtCurrencyPrint(pedido.subtotal)}</span></div>
-  <div class="trow"><span style="color:#666">Impuesto (${pedido.impuestoPct}%)</span><span>${fmtCurrencyPrint(pedido.impuesto)}</span></div>
+  ${(() => {
+    const tg = new Map<number, number>();
+    for (const d of (pedido.detalles ?? [])) {
+      const pct = Number(d.impuestoPct) || 13;
+      tg.set(pct, (tg.get(pct) ?? 0) + (Number(d.impuesto) || 0));
+    }
+    const entries = Array.from(tg.entries()).sort((a, b) => a[0] - b[0]);
+    if (entries.length <= 1) {
+      const label = entries.length === 1 ? `Impuesto ${entries[0][0]}%` : "Impuesto";
+      return `<div class="trow"><span style="color:#666">${label}</span><span>${fmtCurrencyPrint(pedido.impuesto)}</span></div>`;
+    }
+    return entries.map(([pct, imp]) =>
+      `<div class="trow"><span style="color:#666">Impuesto ${pct}%</span><span>${fmtCurrencyPrint(imp)}</span></div>`
+    ).join("");
+  })()}
   <div class="trow final"><span>Total</span><span>${fmtCurrencyPrint(pedido.total)}</span></div>
 </div></div>
 ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</div>${pedido.observaciones}</div>` : ""}
@@ -807,23 +821,46 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
                 </Table>
               </div>
 
-              <div className="flex justify-end">
-                <div className="w-64 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(detailPedido.subtotal)}</span>
+              {(() => {
+                // Group tax by rate from detail lines
+                const taxGroups = new Map<number, number>();
+                for (const d of detailPedido.detalles ?? []) {
+                  const pct = Number(d.impuestoPct) || 13;
+                  const imp = Number(d.impuesto) || 0;
+                  taxGroups.set(pct, (taxGroups.get(pct) ?? 0) + imp);
+                }
+                const taxEntries = Array.from(taxGroups.entries()).sort((a, b) => a[0] - b[0]);
+                return (
+                  <div className="flex justify-end">
+                    <div className="w-64 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>{formatCurrency(detailPedido.subtotal)}</span>
+                      </div>
+                      {taxEntries.length > 1 ? (
+                        taxEntries.map(([pct, imp]) => (
+                          <div key={pct} className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Impuesto {pct}%</span>
+                            <span>{formatCurrency(imp)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            {taxEntries.length === 1 ? `Impuesto ${taxEntries[0][0]}%` : "Impuesto"}
+                          </span>
+                          <span>{formatCurrency(detailPedido.impuesto)}</span>
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
+                        <span>{formatCurrency(detailPedido.total)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Impuesto</span>
-                    <span>{formatCurrency(detailPedido.impuesto)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span>{formatCurrency(detailPedido.total)}</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {isAdmin && (
                 <PedidoEstadoControl
