@@ -19,14 +19,12 @@ function rowToDto(row: {
   sku: string | null;
   descripcion: string | null;
   precio: string;
-  costo: string;
   stockMinimo: number;
   activo: boolean;
 }) {
   return {
     ...row,
     precio: Number(row.precio),
-    costo: Number(row.costo),
   };
 }
 
@@ -50,7 +48,6 @@ router.get("/", async (req, res) => {
       sku: productosTable.sku,
       descripcion: productosTable.descripcion,
       precio: productosTable.precio,
-      costo: productosTable.costo,
       stockMinimo: productosTable.stockMinimo,
       activo: productosTable.activo,
     })
@@ -73,7 +70,6 @@ router.get("/:id", async (req, res) => {
       sku: productosTable.sku,
       descripcion: productosTable.descripcion,
       precio: productosTable.precio,
-      costo: productosTable.costo,
       stockMinimo: productosTable.stockMinimo,
       activo: productosTable.activo,
     })
@@ -102,7 +98,6 @@ router.post("/", async (req, res) => {
       sku: parsed.data.sku ?? null,
       descripcion: parsed.data.descripcion ?? null,
       precio: String(parsed.data.precio),
-      costo: String(parsed.data.costo ?? 0),
       stockMinimo: parsed.data.stockMinimo ?? 0,
       activo: parsed.data.activo ?? true,
     })
@@ -110,7 +105,6 @@ router.post("/", async (req, res) => {
   res.status(201).json({
     ...row,
     precio: Number(row.precio),
-    costo: Number(row.costo),
     categoriaNombre: null,
   });
 });
@@ -130,7 +124,6 @@ router.put("/:id", async (req, res) => {
       sku: parsed.data.sku ?? null,
       descripcion: parsed.data.descripcion ?? null,
       precio: String(parsed.data.precio),
-      costo: String(parsed.data.costo ?? 0),
       stockMinimo: parsed.data.stockMinimo ?? 0,
       activo: parsed.data.activo ?? true,
     })
@@ -143,7 +136,6 @@ router.put("/:id", async (req, res) => {
   res.json({
     ...row,
     precio: Number(row.precio),
-    costo: Number(row.costo),
     categoriaNombre: null,
   });
 });

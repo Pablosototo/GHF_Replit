@@ -14,7 +14,6 @@ export interface Producto {
   sku?: string | null;
   descripcion?: string | null;
   precio: number;
-  costo: number;
   stockMinimo: number;
   activo: boolean;
 }

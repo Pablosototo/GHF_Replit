@@ -450,7 +450,6 @@ export const ListProductosResponseItem = zod.object({
   sku: zod.string().nullish(),
   descripcion: zod.string().nullish(),
   precio: zod.number(),
-  costo: zod.number(),
   stockMinimo: zod.number(),
   activo: zod.boolean(),
 });
@@ -462,7 +461,6 @@ export const CreateProductoBody = zod.object({
   sku: zod.string().nullish(),
   descripcion: zod.string().nullish(),
   precio: zod.number(),
-  costo: zod.number().optional(),
   stockMinimo: zod.number().optional(),
   activo: zod.boolean().optional(),
 });
@@ -479,7 +477,6 @@ export const GetProductoResponse = zod.object({
   sku: zod.string().nullish(),
   descripcion: zod.string().nullish(),
   precio: zod.number(),
-  costo: zod.number(),
   stockMinimo: zod.number(),
   activo: zod.boolean(),
 });
@@ -494,7 +491,6 @@ export const UpdateProductoBody = zod.object({
   sku: zod.string().nullish(),
   descripcion: zod.string().nullish(),
   precio: zod.number(),
-  costo: zod.number().optional(),
   stockMinimo: zod.number().optional(),
   activo: zod.boolean().optional(),
 });
@@ -507,7 +503,6 @@ export const UpdateProductoResponse = zod.object({
   sku: zod.string().nullish(),
   descripcion: zod.string().nullish(),
   precio: zod.number(),
-  costo: zod.number(),
   stockMinimo: zod.number(),
   activo: zod.boolean(),
 });

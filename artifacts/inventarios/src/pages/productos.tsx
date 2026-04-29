@@ -75,7 +75,6 @@ const productoSchema = z.object({
   categoriaId: z.coerce.number().optional().nullable(),
   descripcion: z.string().optional().nullable(),
   precio: z.coerce.number().min(0, "El precio debe ser mayor o igual a 0"),
-  costo: z.coerce.number().min(0, "El costo debe ser mayor o igual a 0").optional().default(0),
   stockMinimo: z.coerce.number().int().min(0, "El stock mínimo debe ser mayor o igual a 0").optional().default(0),
   activo: z.boolean().default(true),
 });
@@ -110,7 +109,6 @@ export default function Productos() {
       categoriaId: null,
       descripcion: "",
       precio: 0,
-      costo: 0,
       stockMinimo: 0,
       activo: true,
     },
@@ -174,7 +172,6 @@ export default function Productos() {
       categoriaId: producto.categoriaId || null,
       descripcion: producto.descripcion || "",
       precio: producto.precio,
-      costo: producto.costo,
       stockMinimo: producto.stockMinimo,
       activo: producto.activo,
     });
@@ -189,7 +186,6 @@ export default function Productos() {
       categoriaId: null,
       descripcion: "",
       precio: 0,
-      costo: 0,
       stockMinimo: 0,
       activo: true,
     });
@@ -259,7 +255,6 @@ export default function Productos() {
               <TableHead>Nombre</TableHead>
               <TableHead>Categoría</TableHead>
               <TableHead className="text-right">Precio</TableHead>
-              <TableHead className="text-right">Costo</TableHead>
               <TableHead className="text-center">Stock Mín.</TableHead>
               <TableHead className="text-center">Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -272,7 +267,6 @@ export default function Productos() {
                 <TableCell className="font-medium">{producto.nombre}</TableCell>
                 <TableCell>{producto.categoriaNombre || "-"}</TableCell>
                 <TableCell className="text-right">{formatCurrency(producto.precio)}</TableCell>
-                <TableCell className="text-right text-muted-foreground">{formatCurrency(producto.costo)}</TableCell>
                 <TableCell className="text-center">{producto.stockMinimo}</TableCell>
                 <TableCell className="text-center">
                   {producto.activo ? (
@@ -301,7 +295,7 @@ export default function Productos() {
             ))}
             {productos?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No se encontraron productos.
                 </TableCell>
               </TableRow>
@@ -384,26 +378,13 @@ export default function Productos() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="precio"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Precio Venta</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="costo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Costo</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} />
                       </FormControl>

@@ -1011,10 +1011,9 @@ components:
         sku: { type: string, nullable: true }
         descripcion: { type: string, nullable: true }
         precio: { type: number }
-        costo: { type: number }
         stockMinimo: { type: integer }
         activo: { type: boolean }
-      required: [id, nombre, precio, costo, stockMinimo, activo]
+      required: [id, nombre, precio, stockMinimo, activo]
 
     ProductoInput:
       type: object
@@ -1024,7 +1023,6 @@ components:
         sku: { type: string, nullable: true }
         descripcion: { type: string, nullable: true }
         precio: { type: number }
-        costo: { type: number }
         stockMinimo: { type: integer }
         activo: { type: boolean }
       required: [nombre, precio]
