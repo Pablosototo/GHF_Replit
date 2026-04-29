@@ -52,6 +52,17 @@ import {
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { ESTADO_LABELS, ESTADO_BADGE_CLASSES } from "@/lib/pedido-estados";
 
+const CATEGORIA_COLORS = [
+  { base: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100", active: "bg-indigo-600 text-white border-indigo-600" },
+  { base: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100", active: "bg-emerald-600 text-white border-emerald-600" },
+  { base: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100", active: "bg-amber-500 text-white border-amber-500" },
+  { base: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100", active: "bg-rose-600 text-white border-rose-600" },
+  { base: "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100", active: "bg-violet-600 text-white border-violet-600" },
+  { base: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100", active: "bg-cyan-600 text-white border-cyan-600" },
+  { base: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100", active: "bg-orange-500 text-white border-orange-500" },
+  { base: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100", active: "bg-teal-600 text-white border-teal-600" },
+];
+
 interface CartLine {
   productoId: number;
   nombre: string;
@@ -559,20 +570,22 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
               >
                 Todas
               </button>
-              {categorias?.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setCategoriaId(c.id)}
-                  className={cn(
-                    "rounded-full border px-4 py-1.5 text-sm font-medium transition",
-                    categoriaId === c.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card hover:bg-muted",
-                  )}
-                >
-                  {c.nombre}
-                </button>
-              ))}
+              {categorias?.map((c, idx) => {
+                const color = CATEGORIA_COLORS[idx % CATEGORIA_COLORS.length];
+                const isActive = categoriaId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setCategoriaId(c.id)}
+                    className={cn(
+                      "rounded-full border px-4 py-1.5 text-sm font-medium transition",
+                      isActive ? color.active : color.base,
+                    )}
+                  >
+                    {c.nombre}
+                  </button>
+                );
+              })}
             </div>
 
             {filtered.length === 0 ? (
