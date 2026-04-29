@@ -91,8 +91,6 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
   const [categoriaId, setCategoriaId] = useState<number | "todas">("todas");
   const [busqueda, setBusqueda] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [clienteNombre, setClienteNombre] = useState("");
-  const [clienteTelefono, setClienteTelefono] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [impuestoPct, setImpuestoPct] = useState<number>(13);
   const [localId, setLocalId] = useState<number | null>(me?.localId ?? null);
@@ -222,8 +220,8 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
 
     const basePayload = {
       localId: isAdmin ? localId : me?.localId ?? null,
-      clienteNombre: clienteNombre || null,
-      clienteTelefono: clienteTelefono || null,
+      clienteNombre: null,
+      clienteTelefono: null,
       clienteEmail: null,
       observaciones: observaciones || null,
     };
@@ -298,8 +296,6 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
 
   const resetForm = () => {
     setCart([]);
-    setClienteNombre("");
-    setClienteTelefono("");
     setObservaciones("");
     setCartOpen(false);
   };
@@ -416,20 +412,6 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
 
       <div className="space-y-3 border-t bg-muted/30 p-4">
         <div className="space-y-2">
-          {isFactura && (
-            <>
-              <Input
-                placeholder="Nombre del cliente (opcional)"
-                value={clienteNombre}
-                onChange={(e) => setClienteNombre(e.target.value)}
-              />
-              <Input
-                placeholder="Teléfono (opcional)"
-                value={clienteTelefono}
-                onChange={(e) => setClienteTelefono(e.target.value)}
-              />
-            </>
-          )}
           <Textarea
             placeholder="Observaciones"
             rows={2}
