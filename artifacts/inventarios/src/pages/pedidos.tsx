@@ -6,11 +6,14 @@ import {
   useAnularPedido,
   useFacturarPedido,
   useGetPedido,
+  useListPedidoEventos,
+  useCambiarEstadoPedido,
   useListProductos,
   useListLocales,
   useGetMe,
   getListPedidosQueryKey
 } from "@workspace/api-client-react";
+import { ESTADOS_GESTIONABLES, ESTADO_LABELS, ESTADO_BADGE_CLASSES } from "@/lib/pedido-estados";
 import { 
   Table, 
   TableBody, 
@@ -209,8 +212,10 @@ export default function Pedidos() {
         <TabsList>
           <TabsTrigger value="todos">Todos</TabsTrigger>
           <TabsTrigger value="pendiente">Pendientes</TabsTrigger>
+          <TabsTrigger value="procesando">Procesando</TabsTrigger>
+          <TabsTrigger value="enviando">Enviando</TabsTrigger>
           <TabsTrigger value="facturado">Facturados</TabsTrigger>
-          <TabsTrigger value="anulado">Anulados</TabsTrigger>
+          <TabsTrigger value="anulada">Anulados</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -238,11 +243,9 @@ export default function Pedidos() {
                 <TableCell className="text-center">
                   <Badge variant="outline" className={cn(
                     "capitalize",
-                    pedido.estado === "pendiente" ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
-                    pedido.estado === "facturado" ? "bg-green-50 text-green-700 border-green-200" :
-                    "bg-red-50 text-red-700 border-red-200"
+                    ESTADO_BADGE_CLASSES[pedido.estado] ?? ""
                   )}>
-                    {pedido.estado}
+                    {ESTADO_LABELS[pedido.estado] ?? pedido.estado}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -250,26 +253,28 @@ export default function Pedidos() {
                     <Button variant="ghost" size="icon" onClick={() => handleOpenDetail(pedido.id)}>
                       <Eye className="h-4 w-4" />
                     </Button>
-                    {pedido.estado === "pendiente" && (
-                      <>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-green-600"
-                          onClick={() => facturarMutation.mutate({ id: pedido.id })}
-                          disabled={facturarMutation.isPending}
-                        >
-                          <Receipt className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-destructive"
-                          onClick={() => setAnularId(pedido.id)}
-                        >
-                          <Ban className="h-4 w-4" />
-                        </Button>
-                      </>
+                    {isAdmin && pedido.estado !== "facturado" && pedido.estado !== "anulada" && pedido.estado !== "anulado" && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-green-600"
+                        title="Facturar"
+                        onClick={() => facturarMutation.mutate({ id: pedido.id })}
+                        disabled={facturarMutation.isPending}
+                      >
+                        <Receipt className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {pedido.estado !== "facturado" && pedido.estado !== "anulada" && pedido.estado !== "anulado" && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-destructive"
+                        title="Anular"
+                        onClick={() => setAnularId(pedido.id)}
+                      >
+                        <Ban className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
                 </TableCell>
@@ -529,13 +534,21 @@ export default function Pedidos() {
       </Dialog>
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Pedido #{detailPedido?.id}
-              <Badge variant="outline" className="capitalize">
-                {detailPedido?.estado}
-              </Badge>
+              {detailPedido && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "capitalize",
+                    ESTADO_BADGE_CLASSES[detailPedido.estado] ?? "",
+                  )}
+                >
+                  {ESTADO_LABELS[detailPedido.estado] ?? detailPedido.estado}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           
@@ -603,29 +616,41 @@ export default function Pedidos() {
                 </div>
               </div>
 
+              {isAdmin && (
+                <PedidoEstadoControl
+                  pedidoId={detailPedido.id}
+                  estado={detailPedido.estado}
+                />
+              )}
+
+              <PedidoEventos pedidoId={detailPedido.id} />
+
               <DialogFooter className="gap-2">
-                {detailPedido.estado === "pendiente" && (
-                  <>
-                    <Button 
-                      variant="destructive" 
-                      onClick={() => {
-                        setAnularId(detailPedido.id);
-                        setIsDetailOpen(false);
-                      }}
-                    >
-                      <Ban className="h-4 w-4 mr-2" /> Anular
-                    </Button>
-                    <Button 
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() => {
-                        facturarMutation.mutate({ id: detailPedido.id });
-                        setIsDetailOpen(false);
-                      }}
-                    >
-                      <Receipt className="h-4 w-4 mr-2" /> Facturar
-                    </Button>
-                  </>
-                )}
+                {isAdmin &&
+                  detailPedido.estado !== "facturado" &&
+                  detailPedido.estado !== "anulada" &&
+                  detailPedido.estado !== "anulado" && (
+                    <>
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          setAnularId(detailPedido.id);
+                          setIsDetailOpen(false);
+                        }}
+                      >
+                        <Ban className="h-4 w-4 mr-2" /> Anular
+                      </Button>
+                      <Button
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => {
+                          facturarMutation.mutate({ id: detailPedido.id });
+                          setIsDetailOpen(false);
+                        }}
+                      >
+                        <Receipt className="h-4 w-4 mr-2" /> Facturar
+                      </Button>
+                    </>
+                  )}
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)}>Cerrar</Button>
               </DialogFooter>
             </div>
@@ -653,6 +678,130 @@ export default function Pedidos() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function PedidoEstadoControl({
+  pedidoId,
+  estado,
+}: {
+  pedidoId: number;
+  estado: string;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [nuevoEstado, setNuevoEstado] = useState<string>("");
+  const [nota, setNota] = useState<string>("");
+
+  const cambiarEstado = useCambiarEstadoPedido({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPedidosQueryKey() });
+        toast({ title: "Estado actualizado", description: "Se registró el cambio." });
+        setNuevoEstado("");
+        setNota("");
+      },
+      onError: (e: any) => {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: e.message || "No se pudo cambiar el estado",
+        });
+      },
+    },
+  });
+
+  if (estado === "facturado" || estado === "anulada" || estado === "anulado") {
+    return null;
+  }
+
+  const opciones = ESTADOS_GESTIONABLES.filter((e) => e !== estado);
+
+  return (
+    <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Cambiar estado
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Select value={nuevoEstado} onValueChange={setNuevoEstado}>
+          <SelectTrigger className="sm:w-48">
+            <SelectValue placeholder="Nuevo estado…" />
+          </SelectTrigger>
+          <SelectContent>
+            {opciones.map((e) => (
+              <SelectItem key={e} value={e}>
+                {ESTADO_LABELS[e] ?? e}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Nota (opcional)"
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          className="flex-1"
+        />
+        <Button
+          disabled={!nuevoEstado || cambiarEstado.isPending}
+          onClick={() =>
+            cambiarEstado.mutate({
+              id: pedidoId,
+              data: { estado: nuevoEstado, nota: nota || null },
+            })
+          }
+        >
+          {cambiarEstado.isPending && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          Aplicar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PedidoEventos({ pedidoId }: { pedidoId: number }) {
+  const { data: eventos, isLoading } = useListPedidoEventos(pedidoId);
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Historial de estados
+      </p>
+      {isLoading ? (
+        <div className="flex h-16 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        </div>
+      ) : !eventos || eventos.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin eventos.</p>
+      ) : (
+        <ol className="space-y-2">
+          {eventos.map((ev) => (
+            <li
+              key={ev.id}
+              className="flex flex-col gap-1 border-l-2 border-primary/40 pl-3 sm:flex-row sm:items-baseline sm:gap-3"
+            >
+              <Badge
+                variant="outline"
+                className={cn(
+                  "w-fit capitalize",
+                  ESTADO_BADGE_CLASSES[ev.estado] ?? "",
+                )}
+              >
+                {ESTADO_LABELS[ev.estado] ?? ev.estado}
+              </Badge>
+              <div className="flex-1 space-y-0.5 text-sm">
+                <p className="text-xs text-muted-foreground">
+                  {formatDateTime(ev.fecha)}
+                  {ev.usuarioNombre ? ` · ${ev.usuarioNombre}` : ""}
+                </p>
+                {ev.nota && <p className="text-sm">{ev.nota}</p>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

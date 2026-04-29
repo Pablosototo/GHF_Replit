@@ -44,6 +44,8 @@ import type {
   MovimientoInput,
   Ok,
   Pedido,
+  PedidoEstadoInput,
+  PedidoEvento,
   PedidoInput,
   Producto,
   ProductoInput,
@@ -3451,6 +3453,167 @@ export const useFacturarPedido = <
 > => {
   return useMutation(getFacturarPedidoMutationOptions(options));
 };
+
+export const getCambiarEstadoPedidoUrl = (id: number) => {
+  return `/api/pedidos/${id}/estado`;
+};
+
+export const cambiarEstadoPedido = async (
+  id: number,
+  pedidoEstadoInput: PedidoEstadoInput,
+  options?: RequestInit,
+): Promise<Pedido> => {
+  return customFetch<Pedido>(getCambiarEstadoPedidoUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(pedidoEstadoInput),
+  });
+};
+
+export const getCambiarEstadoPedidoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cambiarEstadoPedido>>,
+    TError,
+    { id: number; data: BodyType<PedidoEstadoInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cambiarEstadoPedido>>,
+  TError,
+  { id: number; data: BodyType<PedidoEstadoInput> },
+  TContext
+> => {
+  const mutationKey = ["cambiarEstadoPedido"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cambiarEstadoPedido>>,
+    { id: number; data: BodyType<PedidoEstadoInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cambiarEstadoPedido(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CambiarEstadoPedidoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cambiarEstadoPedido>>
+>;
+export type CambiarEstadoPedidoMutationBody = BodyType<PedidoEstadoInput>;
+export type CambiarEstadoPedidoMutationError = ErrorType<unknown>;
+
+export const useCambiarEstadoPedido = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cambiarEstadoPedido>>,
+    TError,
+    { id: number; data: BodyType<PedidoEstadoInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cambiarEstadoPedido>>,
+  TError,
+  { id: number; data: BodyType<PedidoEstadoInput> },
+  TContext
+> => {
+  return useMutation(getCambiarEstadoPedidoMutationOptions(options));
+};
+
+export const getListPedidoEventosUrl = (id: number) => {
+  return `/api/pedidos/${id}/eventos`;
+};
+
+export const listPedidoEventos = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PedidoEvento[]> => {
+  return customFetch<PedidoEvento[]>(getListPedidoEventosUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPedidoEventosQueryKey = (id: number) => {
+  return [`/api/pedidos/${id}/eventos`] as const;
+};
+
+export const getListPedidoEventosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPedidoEventos>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPedidoEventos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPedidoEventosQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPedidoEventos>>
+  > = ({ signal }) => listPedidoEventos(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPedidoEventos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPedidoEventosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPedidoEventos>>
+>;
+export type ListPedidoEventosQueryError = ErrorType<unknown>;
+
+export function useListPedidoEventos<
+  TData = Awaited<ReturnType<typeof listPedidoEventos>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPedidoEventos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPedidoEventosQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListFacturasUrl = (params?: ListFacturasParams) => {
   const normalizedParams = new URLSearchParams();

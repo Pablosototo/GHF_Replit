@@ -576,7 +576,7 @@ export const CreatePedidoBody = zod.object({
     zod.object({
       productoId: zod.number(),
       cantidad: zod.number(),
-      precioUnitario: zod.number(),
+      precioUnitario: zod.number().nullish(),
     }),
   ),
 });
@@ -648,6 +648,57 @@ export const FacturarPedidoResponse = zod.object({
     }),
   ),
 });
+
+export const CambiarEstadoPedidoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CambiarEstadoPedidoBody = zod.object({
+  estado: zod.string(),
+  nota: zod.string().nullish(),
+});
+
+export const CambiarEstadoPedidoResponse = zod.object({
+  id: zod.number(),
+  localId: zod.number().nullish(),
+  localNombre: zod.string().nullish(),
+  clienteNombre: zod.string().nullish(),
+  clienteTelefono: zod.string().nullish(),
+  clienteEmail: zod.string().nullish(),
+  observaciones: zod.string().nullish(),
+  subtotal: zod.number(),
+  impuesto: zod.number(),
+  total: zod.number(),
+  estado: zod.string(),
+  createdAt: zod.string(),
+  detalles: zod.array(
+    zod.object({
+      id: zod.number(),
+      productoId: zod.number(),
+      productoNombre: zod.string(),
+      cantidad: zod.number(),
+      precioUnitario: zod.number(),
+      subtotal: zod.number(),
+    }),
+  ),
+});
+
+export const ListPedidoEventosParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListPedidoEventosResponseItem = zod.object({
+  id: zod.number(),
+  pedidoId: zod.number(),
+  estado: zod.string(),
+  nota: zod.string().nullish(),
+  usuarioId: zod.number().nullish(),
+  usuarioNombre: zod.string().nullish(),
+  fecha: zod.string(),
+});
+export const ListPedidoEventosResponse = zod.array(
+  ListPedidoEventosResponseItem,
+);
 
 export const ListFacturasQueryParams = zod.object({
   localId: zod.coerce.number().optional(),

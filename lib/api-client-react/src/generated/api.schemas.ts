@@ -176,7 +176,22 @@ export interface PedidoDetalle {
 export interface PedidoDetalleInput {
   productoId: number;
   cantidad: number;
-  precioUnitario: number;
+  precioUnitario?: number | null;
+}
+
+export interface PedidoEvento {
+  id: number;
+  pedidoId: number;
+  estado: string;
+  nota?: string | null;
+  usuarioId?: number | null;
+  usuarioNombre?: string | null;
+  fecha: string;
+}
+
+export interface PedidoEstadoInput {
+  estado: string;
+  nota?: string | null;
 }
 
 export interface Pedido {

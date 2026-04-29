@@ -643,6 +643,39 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Factura" }
 
+  /pedidos/{id}/estado:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    patch:
+      operationId: cambiarEstadoPedido
+      tags: [pedidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PedidoEstadoInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pedido" }
+
+  /pedidos/{id}/eventos:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      operationId: listPedidoEventos
+      tags: [pedidos]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PedidoEvento" }
+
   # ------------------ FACTURAS ------------------
   /facturas:
     get:
@@ -957,8 +990,27 @@ components:
       properties:
         productoId: { type: integer }
         cantidad: { type: integer }
-        precioUnitario: { type: number }
-      required: [productoId, cantidad, precioUnitario]
+        precioUnitario: { type: number, nullable: true }
+      required: [productoId, cantidad]
+
+    PedidoEvento:
+      type: object
+      properties:
+        id: { type: integer }
+        pedidoId: { type: integer }
+        estado: { type: string }
+        nota: { type: string, nullable: true }
+        usuarioId: { type: integer, nullable: true }
+        usuarioNombre: { type: string, nullable: true }
+        fecha: { type: string }
+      required: [id, pedidoId, estado, fecha]
+
+    PedidoEstadoInput:
+      type: object
+      properties:
+        estado: { type: string }
+        nota: { type: string, nullable: true }
+      required: [estado]
 
     Pedido:
       type: object

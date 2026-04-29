@@ -37,6 +37,8 @@ export * from "./ok";
 export * from "./pedido";
 export * from "./pedidoDetalle";
 export * from "./pedidoDetalleInput";
+export * from "./pedidoEstadoInput";
+export * from "./pedidoEvento";
 export * from "./pedidoInput";
 export * from "./producto";
 export * from "./productoInput";

@@ -35,5 +35,15 @@ export const pedidoDetallesTable = pgTable("pedido_detalles", {
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
 });
 
+export const pedidoEventosTable = pgTable("pedido_eventos", {
+  id: serial("id").primaryKey(),
+  pedidoId: integer("pedido_id").notNull(),
+  estado: text("estado").notNull(),
+  nota: text("nota"),
+  usuarioId: integer("usuario_id"),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type Pedido = typeof pedidosTable.$inferSelect;
 export type PedidoDetalle = typeof pedidoDetallesTable.$inferSelect;
+export type PedidoEvento = typeof pedidoEventosTable.$inferSelect;

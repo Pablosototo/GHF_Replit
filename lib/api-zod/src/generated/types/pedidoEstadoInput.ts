@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PedidoDetalleInput {
-  productoId: number;
-  cantidad: number;
-  precioUnitario?: number | null;
+export interface PedidoEstadoInput {
+  estado: string;
+  nota?: string | null;
 }

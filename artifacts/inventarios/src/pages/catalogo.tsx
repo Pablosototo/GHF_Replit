@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProductos,
   useListCategorias,
   useListLocales,
+  useListPedidos,
+  useGetPedido,
   useCreatePedido,
   useCreateFactura,
   useGetMe,
@@ -20,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -43,8 +46,11 @@ import {
   Package,
   Receipt,
   Send,
+  RotateCcw,
+  Clock,
 } from "lucide-react";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
+import { ESTADO_LABELS, ESTADO_BADGE_CLASSES } from "@/lib/pedido-estados";
 
 interface CartLine {
   productoId: number;
@@ -63,11 +69,14 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
   const [, setLocation] = useLocation();
   const { data: me } = useGetMe();
   const isAdmin = me?.role === "admin";
+  const isFactura = mode === "factura";
+  const isPedido = !isFactura;
 
   const { data: categorias } = useListCategorias();
   const { data: productos, isLoading } = useListProductos();
   const { data: locales } = useListLocales();
 
+  const [tab, setTab] = useState<"catalogo" | "historial">("catalogo");
   const [categoriaId, setCategoriaId] = useState<number | "todas">("todas");
   const [busqueda, setBusqueda] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -77,6 +86,10 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
   const [impuestoPct, setImpuestoPct] = useState<number>(13);
   const [localId, setLocalId] = useState<number | null>(me?.localId ?? null);
   const [cartOpen, setCartOpen] = useState(false);
+
+  useEffect(() => {
+    if (me?.localId && localId == null) setLocalId(me.localId);
+  }, [me?.localId, localId]);
 
   const createPedido = useCreatePedido();
   const createFactura = useCreateFactura();
@@ -150,8 +163,11 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
   );
   const impuesto = Number((subtotal * (impuestoPct / 100)).toFixed(2));
   const total = Number((subtotal + impuesto).toFixed(2));
+  const totalUnidades = useMemo(
+    () => cart.reduce((sum, c) => sum + c.cantidad, 0),
+    [cart],
+  );
 
-  const isFactura = mode === "factura";
   const submitting = createPedido.isPending || createFactura.isPending;
 
   const onSubmit = () => {
@@ -172,23 +188,27 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
       return;
     }
 
-    const payload = {
+    const basePayload = {
       localId: isAdmin ? localId : me?.localId ?? null,
       clienteNombre: clienteNombre || null,
       clienteTelefono: clienteTelefono || null,
       clienteEmail: null,
       observaciones: observaciones || null,
-      impuestoPct,
-      detalles: cart.map((c) => ({
-        productoId: c.productoId,
-        cantidad: c.cantidad,
-        precioUnitario: c.precioUnitario,
-      })),
     };
 
     if (isFactura) {
       createFactura.mutate(
-        { data: payload },
+        {
+          data: {
+            ...basePayload,
+            impuestoPct,
+            detalles: cart.map((c) => ({
+              productoId: c.productoId,
+              cantidad: c.cantidad,
+              precioUnitario: c.precioUnitario,
+            })),
+          },
+        },
         {
           onSuccess: (factura) => {
             queryClient.invalidateQueries({ queryKey: getListFacturasQueryKey() });
@@ -197,11 +217,7 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
               title: "Factura emitida",
               description: `Número ${factura.numeroFactura} – ${formatCurrency(factura.total)}`,
             });
-            setCart([]);
-            setClienteNombre("");
-            setClienteTelefono("");
-            setObservaciones("");
-            setCartOpen(false);
+            resetForm();
             setLocation("/facturas");
           },
           onError: (e) => {
@@ -214,8 +230,18 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
         },
       );
     } else {
+      // Pedido: do NOT send prices or impuesto — backend uses producto.precio
       createPedido.mutate(
-        { data: payload },
+        {
+          data: {
+            ...basePayload,
+            impuestoPct: 0,
+            detalles: cart.map((c) => ({
+              productoId: c.productoId,
+              cantidad: c.cantidad,
+            })),
+          },
+        },
         {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getListPedidosQueryKey() });
@@ -223,11 +249,8 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
               title: "Pedido enviado",
               description: "Tu pedido fue enviado al administrador.",
             });
-            setCart([]);
-            setClienteNombre("");
-            setClienteTelefono("");
-            setObservaciones("");
-            setCartOpen(false);
+            resetForm();
+            setTab("historial");
           },
           onError: (e) => {
             toast({
@@ -239,6 +262,14 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
         },
       );
     }
+  };
+
+  const resetForm = () => {
+    setCart([]);
+    setClienteNombre("");
+    setClienteTelefono("");
+    setObservaciones("");
+    setCartOpen(false);
   };
 
   const Resumen = (
@@ -257,7 +288,7 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
         <Badge variant="secondary">{cart.length} ítem(s)</Badge>
       </div>
 
-      {isAdmin && (
+      {isAdmin && isFactura && (
         <div className="space-y-2 border-b p-4">
           <label className="text-xs font-medium text-muted-foreground">
             Local
@@ -297,9 +328,11 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{c.nombre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(c.precioUnitario)} c/u
-                    </p>
+                    {isFactura && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(c.precioUnitario)} c/u
+                      </p>
+                    )}
                   </div>
                   <Button
                     size="icon"
@@ -332,9 +365,11 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <span className="text-sm font-bold tabular-nums">
-                    {formatCurrency(c.precioUnitario * c.cantidad)}
-                  </span>
+                  {isFactura && (
+                    <span className="text-sm font-bold tabular-nums">
+                      {formatCurrency(c.precioUnitario * c.cantidad)}
+                    </span>
+                  )}
                 </div>
               </li>
             ))}
@@ -360,35 +395,44 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
           />
-          <div className="flex items-center gap-2">
-            <label className="flex-1 text-xs text-muted-foreground">
-              Impuesto %
-            </label>
-            <Input
-              type="number"
-              className="w-24"
-              value={impuestoPct}
-              onChange={(e) => setImpuestoPct(Number(e.target.value) || 0)}
-              min={0}
-              max={100}
-            />
-          </div>
+          {isFactura && (
+            <div className="flex items-center gap-2">
+              <label className="flex-1 text-xs text-muted-foreground">
+                Impuesto %
+              </label>
+              <Input
+                type="number"
+                className="w-24"
+                value={impuestoPct}
+                onChange={(e) => setImpuestoPct(Number(e.target.value) || 0)}
+                min={0}
+                max={100}
+              />
+            </div>
+          )}
         </div>
         <Separator />
-        <div className="space-y-1.5 text-sm">
-          <div className="flex justify-between text-muted-foreground">
-            <span>Subtotal</span>
-            <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+        {isFactura ? (
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Subtotal</span>
+              <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Impuesto ({impuestoPct}%)</span>
+              <span className="tabular-nums">{formatCurrency(impuesto)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 text-base font-bold">
+              <span>Total</span>
+              <span className="tabular-nums">{formatCurrency(total)}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-muted-foreground">
-            <span>Impuesto ({impuestoPct}%)</span>
-            <span className="tabular-nums">{formatCurrency(impuesto)}</span>
-          </div>
+        ) : (
           <div className="flex justify-between border-t pt-2 text-base font-bold">
-            <span>Total</span>
-            <span className="tabular-nums">{formatCurrency(total)}</span>
+            <span>Total de unidades</span>
+            <span className="tabular-nums">{totalUnidades}</span>
           </div>
-        </div>
+        )}
         <Button
           className="w-full"
           size="lg"
@@ -416,21 +460,38 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
     );
   }
 
-  return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
-      {/* Productos */}
-      <div className="flex flex-1 flex-col gap-4 overflow-hidden">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {isFactura ? "Facturación rápida" : "Catálogo de productos"}
-          </h2>
-          <p className="text-muted-foreground">
-            {isFactura
-              ? "Arma una factura y emítela inmediatamente."
-              : "Agrega productos al carro y envía tu pedido al administrador."}
-          </p>
-        </div>
+  const handleRepetir = (lineas: Array<{ productoId: number; cantidad: number }>) => {
+    const nuevasLineas: CartLine[] = [];
+    for (const l of lineas) {
+      const prod = productos?.find((p) => p.id === l.productoId);
+      if (!prod || !prod.activo) continue;
+      nuevasLineas.push({
+        productoId: prod.id,
+        nombre: prod.nombre,
+        precioUnitario: Number(prod.precio),
+        cantidad: l.cantidad,
+      });
+    }
+    if (nuevasLineas.length === 0) {
+      toast({
+        title: "Sin productos disponibles",
+        description: "Los productos del pedido anterior ya no están activos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCart(nuevasLineas);
+    setTab("catalogo");
+    setCartOpen(true);
+    toast({
+      title: "Pedido cargado",
+      description: `${nuevasLineas.length} producto(s) agregado(s) al carro.`,
+    });
+  };
 
+  const Catalogo = (
+    <div className="flex h-[calc(100vh-12rem)] gap-6">
+      <div className="flex flex-1 flex-col gap-4 overflow-hidden">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -454,7 +515,7 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
           </Sheet>
         </div>
 
-        <ScrollArea className="flex-1 -mx-2 px-2">
+        <ScrollArea className="-mx-2 flex-1 px-2">
           <div className="space-y-6 pb-6">
             <div className="flex flex-wrap gap-2">
               <button
@@ -523,9 +584,13 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
                           )}
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-lg font-bold tabular-nums">
-                            {formatCurrency(p.precio)}
-                          </span>
+                          {isFactura ? (
+                            <span className="text-lg font-bold tabular-nums">
+                              {formatCurrency(p.precio)}
+                            </span>
+                          ) : (
+                            <span />
+                          )}
                           {enCarro === 0 ? (
                             <Button
                               size="sm"
@@ -569,10 +634,176 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
         </ScrollArea>
       </div>
 
-      {/* Resumen sticky (desktop) */}
       <aside className="hidden w-[360px] shrink-0 overflow-hidden rounded-lg border bg-card lg:block">
         {Resumen}
       </aside>
     </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">
+          {isFactura ? "Facturación rápida" : "Catálogo de productos"}
+        </h2>
+        <p className="text-muted-foreground">
+          {isFactura
+            ? "Arma una factura y emítela inmediatamente."
+            : "Agrega productos al carro y envía tu pedido al administrador."}
+        </p>
+      </div>
+
+      {isPedido ? (
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "catalogo" | "historial")}>
+          <TabsList>
+            <TabsTrigger value="catalogo">
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Catálogo
+            </TabsTrigger>
+            <TabsTrigger value="historial">
+              <Clock className="mr-2 h-4 w-4" />
+              Mis pedidos
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="catalogo" className="mt-4">
+            {Catalogo}
+          </TabsContent>
+          <TabsContent value="historial" className="mt-4">
+            <HistorialPedidos onRepetir={handleRepetir} localId={me?.localId ?? null} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        Catalogo
+      )}
+    </div>
+  );
+}
+
+function HistorialPedidos({
+  onRepetir,
+  localId,
+}: {
+  onRepetir: (lineas: Array<{ productoId: number; cantidad: number }>) => void;
+  localId: number | null;
+}) {
+  const { data: pedidos, isLoading } = useListPedidos({
+    localId: localId ?? undefined,
+  });
+  const [openId, setOpenId] = useState<number | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!pedidos || pedidos.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-muted-foreground">
+        <ShoppingCart className="h-10 w-10 opacity-30" />
+        <p className="text-sm">Aún no has enviado pedidos.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {pedidos.map((p) => (
+        <PedidoHistorialCard
+          key={p.id}
+          pedidoId={p.id}
+          fecha={p.createdAt}
+          estado={p.estado}
+          isOpen={openId === p.id}
+          onToggle={() => setOpenId(openId === p.id ? null : p.id)}
+          onRepetir={onRepetir}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PedidoHistorialCard({
+  pedidoId,
+  fecha,
+  estado,
+  isOpen,
+  onToggle,
+  onRepetir,
+}: {
+  pedidoId: number;
+  fecha: string;
+  estado: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onRepetir: (lineas: Array<{ productoId: number; cantidad: number }>) => void;
+}) {
+  const { data: detalle } = useGetPedido(pedidoId, {
+    query: { enabled: isOpen } as any,
+  });
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-sm font-semibold">#{pedidoId}</span>
+            <span className="text-sm text-muted-foreground">
+              {formatDateTime(fecha)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className={cn("capitalize", ESTADO_BADGE_CLASSES[estado] ?? "")}
+            >
+              {ESTADO_LABELS[estado] ?? estado}
+            </Badge>
+            <Button variant="outline" size="sm" onClick={onToggle}>
+              {isOpen ? "Ocultar" : "Ver detalle"}
+            </Button>
+          </div>
+        </div>
+
+        {isOpen && detalle && (
+          <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+            <ul className="divide-y">
+              {detalle.detalles.map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center justify-between py-2 text-sm"
+                >
+                  <span className="font-medium">{d.productoNombre}</span>
+                  <span className="text-muted-foreground">x {d.cantidad}</span>
+                </li>
+              ))}
+            </ul>
+            {detalle.observaciones && (
+              <p className="rounded-md bg-card p-2 text-xs italic text-muted-foreground">
+                "{detalle.observaciones}"
+              </p>
+            )}
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() =>
+                  onRepetir(
+                    detalle.detalles.map((d) => ({
+                      productoId: d.productoId,
+                      cantidad: d.cantidad,
+                    })),
+                  )
+                }
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Repetir pedido
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

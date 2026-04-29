@@ -1,21 +1,29 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, type SQL } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, type SQL } from "drizzle-orm";
 import {
   db,
   pedidosTable,
   pedidoDetallesTable,
+  pedidoEventosTable,
   productosTable,
   localesTable,
+  usersTable,
   facturasTable,
   facturaDetallesTable,
   stockTable,
   movimientosTable,
 } from "@workspace/db";
-import { CreatePedidoBody, ListPedidosQueryParams } from "@workspace/api-zod";
+import {
+  CambiarEstadoPedidoBody,
+  CreatePedidoBody,
+  ListPedidosQueryParams,
+} from "@workspace/api-zod";
 import { requireAuth, getUser } from "../lib/auth";
 
 const router: IRouter = Router();
 router.use(requireAuth);
+
+const ESTADOS_VALIDOS = ["pendiente", "procesando", "enviando", "anulada"] as const;
 
 async function buildPedidoDto(pedido: typeof pedidosTable.$inferSelect) {
   const [localRow] = pedido.localId
@@ -153,13 +161,15 @@ router.post("/", async (req, res) => {
       res.status(400).json({ message: `Producto ${d.productoId} no existe` });
       return;
     }
-    const lineSubtotal = Number((d.precioUnitario * d.cantidad).toFixed(2));
+    const precio =
+      d.precioUnitario != null ? Number(d.precioUnitario) : Number(prod.precio);
+    const lineSubtotal = Number((precio * d.cantidad).toFixed(2));
     subtotal += lineSubtotal;
     enriched.push({
       productoId: d.productoId,
       descripcion: prod.nombre,
       cantidad: d.cantidad,
-      precioUnitario: d.precioUnitario,
+      precioUnitario: precio,
       subtotal: lineSubtotal,
     });
   }
@@ -193,11 +203,19 @@ router.post("/", async (req, res) => {
     });
   }
 
+  await db.insert(pedidoEventosTable).values({
+    pedidoId: pedido.id,
+    estado: "pendiente",
+    nota: "Pedido creado",
+    usuarioId: user.id,
+  });
+
   res.status(201).json(await buildPedidoDto(pedido));
 });
 
 router.delete("/:id", async (req, res) => {
   const id = Number(req.params.id);
+  const user = getUser(req)!;
   const [p] = await db.select().from(pedidosTable).where(eq(pedidosTable.id, id)).limit(1);
   if (!p) {
     res.status(404).json({ message: "No encontrado" });
@@ -209,9 +227,76 @@ router.delete("/:id", async (req, res) => {
   }
   await db
     .update(pedidosTable)
-    .set({ estado: "anulado" })
+    .set({ estado: "anulada" })
     .where(eq(pedidosTable.id, id));
+  await db.insert(pedidoEventosTable).values({
+    pedidoId: id,
+    estado: "anulada",
+    nota: "Pedido anulado",
+    usuarioId: user.id,
+  });
   res.json({ ok: true });
+});
+
+router.patch("/:id/estado", async (req, res) => {
+  const user = getUser(req)!;
+  if (user.role !== "admin") {
+    res.status(403).json({ message: "Solo administradores" });
+    return;
+  }
+  const id = Number(req.params.id);
+  const parsed = CambiarEstadoPedidoBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: "Datos inválidos" });
+    return;
+  }
+  const { estado, nota } = parsed.data;
+  if (!ESTADOS_VALIDOS.includes(estado as (typeof ESTADOS_VALIDOS)[number])) {
+    res.status(400).json({ message: "Estado inválido" });
+    return;
+  }
+  const [p] = await db.select().from(pedidosTable).where(eq(pedidosTable.id, id)).limit(1);
+  if (!p) {
+    res.status(404).json({ message: "No encontrado" });
+    return;
+  }
+  if (p.estado === "facturado") {
+    res.status(400).json({ message: "No se puede cambiar un pedido facturado" });
+    return;
+  }
+  await db.update(pedidosTable).set({ estado }).where(eq(pedidosTable.id, id));
+  await db.insert(pedidoEventosTable).values({
+    pedidoId: id,
+    estado,
+    nota: nota ?? null,
+    usuarioId: user.id,
+  });
+  const [updated] = await db.select().from(pedidosTable).where(eq(pedidosTable.id, id)).limit(1);
+  res.json(await buildPedidoDto(updated));
+});
+
+router.get("/:id/eventos", async (req, res) => {
+  const id = Number(req.params.id);
+  const rows = await db
+    .select({
+      id: pedidoEventosTable.id,
+      pedidoId: pedidoEventosTable.pedidoId,
+      estado: pedidoEventosTable.estado,
+      nota: pedidoEventosTable.nota,
+      usuarioId: pedidoEventosTable.usuarioId,
+      usuarioNombre: usersTable.username,
+      fecha: pedidoEventosTable.fecha,
+    })
+    .from(pedidoEventosTable)
+    .leftJoin(usersTable, eq(usersTable.id, pedidoEventosTable.usuarioId))
+    .where(eq(pedidoEventosTable.pedidoId, id))
+    .orderBy(asc(pedidoEventosTable.fecha));
+  res.json(
+    rows.map((r) => ({
+      ...r,
+      fecha: r.fecha.toISOString(),
+    })),
+  );
 });
 
 router.post("/:id/facturar", async (req, res) => {
@@ -301,6 +386,13 @@ router.post("/:id/facturar", async (req, res) => {
     .update(pedidosTable)
     .set({ estado: "facturado" })
     .where(eq(pedidosTable.id, id));
+
+  await db.insert(pedidoEventosTable).values({
+    pedidoId: id,
+    estado: "facturado",
+    nota: `Factura ${numero}`,
+    usuarioId: user.id,
+  });
 
   res.json({
     id: factura.id,
