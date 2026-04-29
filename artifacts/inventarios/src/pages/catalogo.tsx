@@ -563,9 +563,6 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
                       )}
                     >
                       <CardContent className="flex flex-col gap-3 p-4">
-                        <div className="flex aspect-[4/3] items-center justify-center rounded-md bg-muted">
-                          <Package className="h-12 w-12 text-muted-foreground/40" />
-                        </div>
                         <div className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
                             <p className="line-clamp-2 text-sm font-semibold leading-tight">
