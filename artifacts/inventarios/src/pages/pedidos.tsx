@@ -63,7 +63,8 @@ import {
   Eye,
   Search,
   FilterX,
-  Printer
+  Printer,
+  Copy
 } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -105,6 +106,7 @@ export default function Pedidos() {
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [anularId, setAnularId] = useState<number | null>(null);
+  const [repeatSourceId, setRepeatSourceId] = useState<number | null>(null);
 
   const { data: pedidos, isLoading } = useListPedidos({
     estado: estadoFilter === "todos" ? undefined : estadoFilter,
@@ -184,6 +186,30 @@ export default function Pedidos() {
   const handleOpenDetail = (id: number) => {
     setSelectedPedidoId(id);
     setIsDetailOpen(true);
+  };
+
+  const handleRepetirPedido = async (pedidoId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/pedidos/${pedidoId}`);
+      if (!res.ok) throw new Error();
+      const pedido = await res.json();
+      const detalles = pedido.detalles.map((d: any) => ({
+        productoId: d.productoId,
+        cantidad: d.cantidad,
+        precioUnitario: d.precioUnitario ?? undefined,
+      }));
+      form.reset({
+        localId: isAdmin ? (pedido.localId ?? me?.localId ?? null) : (me?.localId ?? null),
+        observaciones: "",
+        impuestoPct: pedido.impuestoPct ?? 13,
+        detalles: detalles.length > 0 ? detalles : [{ productoId: 0, cantidad: 1 }],
+      });
+      setRepeatSourceId(pedidoId);
+      setIsNewDialogOpen(true);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo cargar el pedido para repetir." });
+    }
   };
 
   const fmtCurrencyPrint = (val: number | null | undefined) => {
@@ -364,6 +390,9 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
                     <Button variant="ghost" size="icon" title="Ver detalle" onClick={() => handleOpenDetail(pedido.id)}>
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button variant="ghost" size="icon" title="Repetir pedido" onClick={(e) => handleRepetirPedido(pedido.id, e)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" title="Imprimir pedido" onClick={(e) => handlePrintPedido(pedido.id, e)}>
                       <Printer className="h-4 w-4" />
                     </Button>
@@ -408,10 +437,25 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
         </Table>
       </div>
 
-      <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
+      <Dialog open={isNewDialogOpen} onOpenChange={(open) => {
+        setIsNewDialogOpen(open);
+        if (!open) { setRepeatSourceId(null); form.reset({ localId: me?.localId || null, observaciones: "", impuestoPct: 13, detalles: [{ productoId: 0, cantidad: 1 }] }); }
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nuevo Pedido</DialogTitle>
+            <DialogTitle>
+              {repeatSourceId ? (
+                <span className="flex items-center gap-2">
+                  <Copy className="h-4 w-4" />
+                  Repetir Pedido #{repeatSourceId}
+                </span>
+              ) : "Nuevo Pedido"}
+            </DialogTitle>
+            {repeatSourceId && (
+              <p className="text-sm text-muted-foreground">
+                Estos son los productos del pedido anterior. Puede quitar, ajustar cantidades o agregar nuevos antes de enviar.
+              </p>
+            )}
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -646,6 +690,12 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
               <PedidoEventos pedidoId={detailPedido.id} />
 
               <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => {
+                  setIsDetailOpen(false);
+                  handleRepetirPedido(detailPedido.id, { stopPropagation: () => {} } as React.MouseEvent);
+                }}>
+                  <Copy className="h-4 w-4 mr-2" /> Repetir
+                </Button>
                 <Button variant="outline" onClick={() => printPedidoWindow(detailPedido)}>
                   <Printer className="h-4 w-4 mr-2" /> Imprimir
                 </Button>
