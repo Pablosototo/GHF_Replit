@@ -663,6 +663,20 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Factura" }
+    post:
+      operationId: createFactura
+      tags: [facturas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FacturaInput" }
+      responses:
+        "201":
+          description: Creada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Factura" }
 
   /facturas/{id}:
     parameters:
@@ -990,6 +1004,28 @@ components:
         precioUnitario: { type: number }
         subtotal: { type: number }
       required: [id, descripcion, cantidad, precioUnitario, subtotal]
+
+    FacturaDetalleInput:
+      type: object
+      properties:
+        productoId: { type: integer }
+        cantidad: { type: integer }
+        precioUnitario: { type: number }
+      required: [productoId, cantidad, precioUnitario]
+
+    FacturaInput:
+      type: object
+      properties:
+        localId: { type: integer, nullable: true }
+        clienteNombre: { type: string, nullable: true }
+        clienteTelefono: { type: string, nullable: true }
+        clienteEmail: { type: string, nullable: true }
+        observaciones: { type: string, nullable: true }
+        impuestoPct: { type: number, default: 0 }
+        detalles:
+          type: array
+          items: { $ref: "#/components/schemas/FacturaDetalleInput" }
+      required: [detalles]
 
     Factura:
       type: object

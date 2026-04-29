@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { 
   useListFacturas, 
   useGetFactura,
@@ -35,7 +36,8 @@ import {
   Receipt,
   Printer,
   Eye,
-  FileText
+  FileText,
+  FilePlus2
 } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -82,6 +84,14 @@ export default function Facturas() {
           <h2 className="text-2xl font-bold tracking-tight">Facturas</h2>
           <p className="text-muted-foreground">Historial de facturación y comprobantes.</p>
         </div>
+        {isAdmin && (
+          <Link href="/facturas/nueva">
+            <Button>
+              <FilePlus2 className="mr-2 h-4 w-4" />
+              Nueva factura
+            </Button>
+          </Link>
+        )}
       </div>
 
       <Tabs value={estadoFilter} onValueChange={setEstadoFilter} className="w-full">

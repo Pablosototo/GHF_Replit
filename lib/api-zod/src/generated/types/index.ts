@@ -13,6 +13,8 @@ export * from "./categoriaInput";
 export * from "./dashboardResumen";
 export * from "./factura";
 export * from "./facturaDetalle";
+export * from "./facturaDetalleInput";
+export * from "./facturaInput";
 export * from "./getDashboardResumenParams";
 export * from "./getStockBajoParams";
 export * from "./getTopProductosParams";

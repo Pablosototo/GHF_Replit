@@ -23,6 +23,7 @@ import type {
   CategoriaInput,
   DashboardResumen,
   Factura,
+  FacturaInput,
   GetDashboardResumenParams,
   GetStockBajoParams,
   GetTopProductosParams,
@@ -3537,6 +3538,86 @@ export function useListFacturas<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getCreateFacturaUrl = () => {
+  return `/api/facturas`;
+};
+
+export const createFactura = async (
+  facturaInput: FacturaInput,
+  options?: RequestInit,
+): Promise<Factura> => {
+  return customFetch<Factura>(getCreateFacturaUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(facturaInput),
+  });
+};
+
+export const getCreateFacturaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFactura>>,
+    TError,
+    { data: BodyType<FacturaInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createFactura>>,
+  TError,
+  { data: BodyType<FacturaInput> },
+  TContext
+> => {
+  const mutationKey = ["createFactura"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createFactura>>,
+    { data: BodyType<FacturaInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createFactura(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateFacturaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createFactura>>
+>;
+export type CreateFacturaMutationBody = BodyType<FacturaInput>;
+export type CreateFacturaMutationError = ErrorType<unknown>;
+
+export const useCreateFactura = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFactura>>,
+    TError,
+    { data: BodyType<FacturaInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createFactura>>,
+  TError,
+  { data: BodyType<FacturaInput> },
+  TContext
+> => {
+  return useMutation(getCreateFacturaMutationOptions(options));
+};
 
 export const getGetFacturaUrl = (id: number) => {
   return `/api/facturas/${id}`;

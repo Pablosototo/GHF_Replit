@@ -14,7 +14,9 @@ import {
   Users,
   LogOut,
   Menu,
-  X
+  X,
+  Utensils,
+  FilePlus2,
 } from "lucide-react";
 import { useGetMe, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,13 +27,21 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
-const NAV_ITEMS = [
+type NavItem = {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+};
+type NavSection = { title: string; items: NavItem[] };
+
+const ADMIN_NAV: NavSection[] = [
   {
     title: "Operación",
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Pedidos", href: "/pedidos", icon: ShoppingCart },
       { name: "Facturas", href: "/facturas", icon: Receipt },
+      { name: "Nueva factura", href: "/facturas/nueva", icon: FilePlus2 },
       { name: "Stock", href: "/stock", icon: Boxes },
       { name: "Movimientos", href: "/stock/movimientos", icon: History },
     ],
@@ -53,8 +63,17 @@ const NAV_ITEMS = [
   },
   {
     title: "Sistema",
+    items: [{ name: "Usuarios", href: "/usuarios", icon: Users }],
+  },
+];
+
+const LOCAL_NAV: NavSection[] = [
+  {
+    title: "Operación",
     items: [
-      { name: "Usuarios", href: "/usuarios", icon: Users, adminOnly: true },
+      { name: "Catálogo", href: "/catalogo", icon: Utensils },
+      { name: "Mis pedidos", href: "/pedidos", icon: ShoppingCart },
+      { name: "Stock de mi local", href: "/stock", icon: Boxes },
     ],
   },
 ];
@@ -82,48 +101,74 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isLoading, setLocation]);
 
+  const isLocalRole = user?.role !== "admin";
+  const allowedForLocal = [
+    "/catalogo",
+    "/pedidos",
+    "/stock",
+  ];
+
+  useEffect(() => {
+    if (!user) return;
+    if (isLocalRole) {
+      if (location === "/") {
+        setLocation("/catalogo");
+        return;
+      }
+      const isAllowed = allowedForLocal.some(
+        (p) => location === p || location.startsWith(p + "/"),
+      );
+      if (!isAllowed) {
+        setLocation("/catalogo");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, location]);
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background text-foreground">Cargando...</div>;
   }
 
   if (!user) return null;
 
+  const navSections = user.role === "admin" ? ADMIN_NAV : LOCAL_NAV;
+
   const Navigation = () => (
     <ScrollArea className="flex-1 py-4">
       <div className="space-y-6 px-3">
-        {NAV_ITEMS.map((section, i) => {
-          const visibleItems = section.items.filter((item: any) => !item.adminOnly || user.role === "admin");
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <div key={i} className="space-y-1">
-              <h4 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-2">
-                {section.title}
-              </h4>
-              <div className="space-y-1">
-                {visibleItems.map((item) => {
-                  const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      )}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
+        {navSections.map((section, i) => (
+          <div key={i} className="space-y-1">
+            <h4 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-2">
+              {section.title}
+            </h4>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const isActive =
+                  location === item.href ||
+                  (item.href !== "/" && location === item.href) ||
+                  (item.href !== "/" &&
+                    item.href !== "/facturas/nueva" &&
+                    location.startsWith(item.href + "/"));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.name}
+                  </Link>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </ScrollArea>
   );
@@ -235,7 +280,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-8 bg-muted/30">
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-7xl">
             {children}
           </div>
         </main>

@@ -214,6 +214,22 @@ export interface FacturaDetalle {
   subtotal: number;
 }
 
+export interface FacturaDetalleInput {
+  productoId: number;
+  cantidad: number;
+  precioUnitario: number;
+}
+
+export interface FacturaInput {
+  localId?: number | null;
+  clienteNombre?: string | null;
+  clienteTelefono?: string | null;
+  clienteEmail?: string | null;
+  observaciones?: string | null;
+  impuestoPct?: number;
+  detalles: FacturaDetalleInput[];
+}
+
 export interface Factura {
   id: number;
   pedidoId?: number | null;

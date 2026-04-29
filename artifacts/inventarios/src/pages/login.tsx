@@ -41,13 +41,13 @@ export default function Login() {
 
   const loginMutation = useLogin({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         toast({
           title: "Sesión iniciada",
           description: "Bienvenido al sistema.",
         });
-        setLocation("/");
+        setLocation(data?.role === "admin" ? "/" : "/catalogo");
       },
       onError: (error) => {
         toast({

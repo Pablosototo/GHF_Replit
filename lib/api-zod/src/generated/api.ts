@@ -682,6 +682,24 @@ export const ListFacturasResponseItem = zod.object({
 });
 export const ListFacturasResponse = zod.array(ListFacturasResponseItem);
 
+export const createFacturaBodyImpuestoPctDefault = 0;
+
+export const CreateFacturaBody = zod.object({
+  localId: zod.number().nullish(),
+  clienteNombre: zod.string().nullish(),
+  clienteTelefono: zod.string().nullish(),
+  clienteEmail: zod.string().nullish(),
+  observaciones: zod.string().nullish(),
+  impuestoPct: zod.number().default(createFacturaBodyImpuestoPctDefault),
+  detalles: zod.array(
+    zod.object({
+      productoId: zod.number(),
+      cantidad: zod.number(),
+      precioUnitario: zod.number(),
+    }),
+  ),
+});
+
 export const GetFacturaParams = zod.object({
   id: zod.coerce.number(),
 });
