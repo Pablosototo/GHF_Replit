@@ -157,6 +157,27 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
     setCart((curr) => curr.filter((c) => c.productoId !== productoId));
   };
 
+  const setQty = (productoId: number, value: string) => {
+    const n = parseInt(value, 10);
+    if (isNaN(n) || value === "") {
+      setCart((curr) =>
+        curr.map((c) => (c.productoId === productoId ? { ...c, cantidad: 0 } : c)),
+      );
+      return;
+    }
+    if (n <= 0) {
+      removeFromCart(productoId);
+      return;
+    }
+    setCart((curr) =>
+      curr.map((c) => (c.productoId === productoId ? { ...c, cantidad: n } : c)),
+    );
+  };
+
+  const commitQty = (productoId: number) => {
+    setCart((curr) => curr.filter((c) => c.cantidad > 0));
+  };
+
   const subtotal = useMemo(
     () => cart.reduce((sum, c) => sum + c.precioUnitario * c.cantidad, 0),
     [cart],
@@ -353,9 +374,14 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </Button>
-                    <span className="w-8 text-center text-sm font-medium tabular-nums">
-                      {c.cantidad}
-                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={c.cantidad || ""}
+                      onChange={(e) => setQty(c.productoId, e.target.value)}
+                      onBlur={() => commitQty(c.productoId)}
+                      className="w-12 border-0 bg-transparent text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-1 focus:ring-primary rounded"
+                    />
                     <Button
                       size="icon"
                       variant="ghost"
@@ -611,9 +637,14 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
                               >
                                 <Minus className="h-3.5 w-3.5" />
                               </Button>
-                              <span className="w-7 text-center text-sm font-semibold tabular-nums">
-                                {enCarro}
-                              </span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={enCarro || ""}
+                                onChange={(e) => setQty(p.id, e.target.value)}
+                                onBlur={() => commitQty(p.id)}
+                                className="w-12 border-0 bg-transparent text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-1 focus:ring-primary rounded"
+                              />
                               <Button
                                 size="icon"
                                 variant="ghost"
