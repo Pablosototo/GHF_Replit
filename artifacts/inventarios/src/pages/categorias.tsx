@@ -49,19 +49,22 @@ type CategoriaFormValues = z.infer<typeof categoriaSchema>;
 
 interface Horario {
   id: number;
-  categoriaId: number;
-  diaSemana: number;
+  categoriaId?: number;
+  diaInicio: number;
   horaInicio: string;
+  diaFin: number;
   horaFin: string;
   activo: boolean;
 }
+
+const DEFAULT_NEW = { diaInicio: "1", horaInicio: "08:00", diaFin: "1", horaFin: "18:00" };
 
 function HorariosPanel({ categoriaId }: { categoriaId: number }) {
   const { toast } = useToast();
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [newHorario, setNewHorario] = useState({ diaSemana: "1", horaInicio: "08:00", horaFin: "18:00" });
+  const [newHorario, setNewHorario] = useState(DEFAULT_NEW);
 
   const load = async () => {
     setLoading(true);
@@ -80,11 +83,17 @@ function HorariosPanel({ categoriaId }: { categoriaId: number }) {
       const r = await fetch(`/api/categorias/${categoriaId}/horarios`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newHorario, diaSemana: Number(newHorario.diaSemana) }),
+        body: JSON.stringify({
+          diaInicio: Number(newHorario.diaInicio),
+          horaInicio: newHorario.horaInicio,
+          diaFin: Number(newHorario.diaFin),
+          horaFin: newHorario.horaFin,
+        }),
       });
       if (!r.ok) throw new Error();
       toast({ title: "Horario agregado" });
       setAdding(false);
+      setNewHorario(DEFAULT_NEW);
       load();
     } catch {
       toast({ variant: "destructive", title: "Error al agregar horario" });
@@ -100,17 +109,26 @@ function HorariosPanel({ categoriaId }: { categoriaId: number }) {
     await fetch(`/api/categorias/${categoriaId}/horarios/${h.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...h, activo: !h.activo }),
+      body: JSON.stringify({ diaInicio: h.diaInicio, horaInicio: h.horaInicio, diaFin: h.diaFin, horaFin: h.horaFin, activo: !h.activo }),
     });
     load();
   };
+
+  const DiaSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {DIAS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Define los días y horarios en que esta categoría (y sus productos) está disponible para pedidos.
-          Sin horarios configurados, siempre está disponible.
+          Define los rangos de disponibilidad (pueden cruzar días, ej: Jueves 08:00 → Viernes 13:00).
+          Sin horarios configurados, la categoría está disponible siempre.
         </p>
         <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
           <Plus className="h-3 w-3 mr-1" /> Agregar
@@ -119,35 +137,36 @@ function HorariosPanel({ categoriaId }: { categoriaId: number }) {
 
       {adding && (
         <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-          <p className="text-sm font-medium">Nuevo horario</p>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Día</label>
-              <Select value={newHorario.diaSemana} onValueChange={(v) => setNewHorario(h => ({ ...h, diaSemana: v }))}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DIAS.map((d, i) => (
-                    <SelectItem key={i} value={String(i)}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <p className="text-sm font-medium">Nuevo rango de disponibilidad</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Inicio</p>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Día</label>
+                <DiaSelect value={newHorario.diaInicio} onChange={v => setNewHorario(h => ({ ...h, diaInicio: v }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Hora</label>
+                <Input className="h-8 text-sm" type="time" value={newHorario.horaInicio}
+                  onChange={e => setNewHorario(h => ({ ...h, horaInicio: e.target.value }))} />
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Desde</label>
-              <Input className="h-8 text-sm" type="time" value={newHorario.horaInicio}
-                onChange={e => setNewHorario(h => ({ ...h, horaInicio: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Hasta</label>
-              <Input className="h-8 text-sm" type="time" value={newHorario.horaFin}
-                onChange={e => setNewHorario(h => ({ ...h, horaFin: e.target.value }))} />
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fin</p>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Día</label>
+                <DiaSelect value={newHorario.diaFin} onChange={v => setNewHorario(h => ({ ...h, diaFin: v }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Hora</label>
+                <Input className="h-8 text-sm" type="time" value={newHorario.horaFin}
+                  onChange={e => setNewHorario(h => ({ ...h, horaFin: e.target.value }))} />
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={handleAdd}>Guardar</Button>
-            <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>Cancelar</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setNewHorario(DEFAULT_NEW); }}>Cancelar</Button>
           </div>
         </div>
       )}
@@ -162,8 +181,13 @@ function HorariosPanel({ categoriaId }: { categoriaId: number }) {
             <div key={h.id} className="flex items-center justify-between border rounded-lg px-4 py-2 bg-background">
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{DIAS[h.diaSemana]}</span>
-                <span className="text-sm text-muted-foreground">{h.horaInicio} – {h.horaFin}</span>
+                <span className="text-sm">
+                  <span className="font-medium">{DIAS[h.diaInicio]}</span>
+                  <span className="text-muted-foreground"> {h.horaInicio}</span>
+                  <span className="text-muted-foreground mx-1">→</span>
+                  <span className="font-medium">{DIAS[h.diaFin]}</span>
+                  <span className="text-muted-foreground"> {h.horaFin}</span>
+                </span>
                 {!h.activo && <Badge variant="outline" className="text-xs text-muted-foreground">Desactivado</Badge>}
               </div>
               <div className="flex items-center gap-2">

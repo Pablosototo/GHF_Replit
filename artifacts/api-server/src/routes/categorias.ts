@@ -7,23 +7,35 @@ import { requireAuth } from "../lib/auth";
 const router: IRouter = Router();
 router.use(requireAuth);
 
-/** Determines if a category is available right now based on its horarios (Costa Rica UTC-6). */
-function calcDisponibleAhora(horarios: Array<{ diaSemana: number; horaInicio: string; horaFin: string; activo: boolean }>): boolean {
-  const active = horarios.filter(h => h.activo);
-  if (active.length === 0) return true; // no restrictions → always available
+type HorarioRow = { diaInicio: number; horaInicio: string; diaFin: number; horaFin: string; activo: boolean };
 
-  // Compute current Costa Rica time (UTC-6, no DST)
+function timeToMin(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/** Returns current Costa Rica time as { crDay (0=Sun..6=Sat), crWeekMin (minutes from Sunday 00:00) } */
+function crNow() {
   const now = new Date();
   const utcTotalMin = now.getUTCHours() * 60 + now.getUTCMinutes();
   const crTotalMin = ((utcTotalMin - 360) % 1440 + 1440) % 1440; // UTC-6
-  const crH = Math.floor(crTotalMin / 60);
-  const crM = crTotalMin % 60;
   const utcDay = now.getUTCDay();
-  // Adjust day if CR time crossed midnight
   const crDay = utcTotalMin < 360 ? ((utcDay - 1 + 7) % 7) : utcDay;
-  const currentTime = `${String(crH).padStart(2, "0")}:${String(crM).padStart(2, "0")}`;
+  return { crDay, crWeekMin: crDay * 1440 + crTotalMin };
+}
 
-  return active.some(h => h.diaSemana === crDay && h.horaInicio <= currentTime && currentTime < h.horaFin);
+/** Whether the category is available right now (Costa Rica UTC-6). Multi-day spans supported. */
+function calcDisponibleAhora(horarios: HorarioRow[]): boolean {
+  const active = horarios.filter(h => h.activo);
+  if (active.length === 0) return true; // no restrictions → always available
+
+  const { crWeekMin } = crNow();
+
+  return active.some(h => {
+    const startMin = h.diaInicio * 1440 + timeToMin(h.horaInicio);
+    const endMin = h.diaFin * 1440 + timeToMin(h.horaFin);
+    return startMin <= crWeekMin && crWeekMin < endMin;
+  });
 }
 
 router.get("/", async (_req, res) => {
@@ -41,7 +53,6 @@ router.get("/", async (_req, res) => {
     .groupBy(categoriasTable.id)
     .orderBy(categoriasTable.nombre);
 
-  // Fetch all horarios in one query and group by categoriaId
   const allHorarios = await db.select().from(categoriaHorariosTable);
   const horariosByCat = new Map<number, typeof allHorarios>();
   for (const h of allHorarios) {
@@ -49,11 +60,22 @@ router.get("/", async (_req, res) => {
     horariosByCat.get(h.categoriaId)!.push(h);
   }
 
-  res.json(rows.map((r) => ({
-    ...r,
-    impuestoPct: Number(r.impuestoPct),
-    disponibleAhora: calcDisponibleAhora(horariosByCat.get(r.id) ?? []),
-  })));
+  res.json(rows.map((r) => {
+    const horarios = horariosByCat.get(r.id) ?? [];
+    return {
+      ...r,
+      impuestoPct: Number(r.impuestoPct),
+      disponibleAhora: calcDisponibleAhora(horarios),
+      horarios: horarios.map(h => ({
+        id: h.id,
+        diaInicio: h.diaInicio,
+        horaInicio: h.horaInicio,
+        diaFin: h.diaFin,
+        horaFin: h.horaFin,
+        activo: h.activo,
+      })),
+    };
+  }));
 });
 
 router.post("/", async (req, res) => {
@@ -72,7 +94,7 @@ router.post("/", async (req, res) => {
       activo: parsed.data.activo ?? true,
     })
     .returning();
-  res.status(201).json({ ...row, impuestoPct: Number(row.impuestoPct), productosCount: 0 });
+  res.status(201).json({ ...row, impuestoPct: Number(row.impuestoPct), productosCount: 0, disponibleAhora: true, horarios: [] });
 });
 
 router.put("/:id", async (req, res) => {
@@ -97,7 +119,7 @@ router.put("/:id", async (req, res) => {
     res.status(404).json({ message: "No encontrado" });
     return;
   }
-  res.json({ ...row, impuestoPct: Number(row.impuestoPct), productosCount: 0 });
+  res.json({ ...row, impuestoPct: Number(row.impuestoPct), productosCount: 0, disponibleAhora: true, horarios: [] });
 });
 
 router.delete("/:id", async (req, res) => {
@@ -118,24 +140,24 @@ router.get("/:id/horarios", async (req, res) => {
 
 router.post("/:id/horarios", async (req, res) => {
   const id = Number(req.params.id);
-  const { diaSemana, horaInicio, horaFin, activo } = req.body;
-  if (diaSemana == null || !horaInicio || !horaFin) {
+  const { diaInicio, horaInicio, diaFin, horaFin, activo } = req.body;
+  if (diaInicio == null || diaFin == null || !horaInicio || !horaFin) {
     res.status(400).json({ message: "Datos inválidos" });
     return;
   }
   const [row] = await db
     .insert(categoriaHorariosTable)
-    .values({ categoriaId: id, diaSemana: Number(diaSemana), horaInicio, horaFin, activo: activo !== false })
+    .values({ categoriaId: id, diaInicio: Number(diaInicio), horaInicio, diaFin: Number(diaFin), horaFin, activo: activo !== false })
     .returning();
   res.status(201).json(row);
 });
 
 router.put("/:id/horarios/:hid", async (req, res) => {
   const hid = Number(req.params.hid);
-  const { diaSemana, horaInicio, horaFin, activo } = req.body;
+  const { diaInicio, horaInicio, diaFin, horaFin, activo } = req.body;
   const [row] = await db
     .update(categoriaHorariosTable)
-    .set({ diaSemana: Number(diaSemana), horaInicio, horaFin, activo: activo !== false })
+    .set({ diaInicio: Number(diaInicio), horaInicio, diaFin: Number(diaFin), horaFin, activo: activo !== false })
     .where(eq(categoriaHorariosTable.id, hid))
     .returning();
   res.json(row);

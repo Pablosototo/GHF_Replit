@@ -52,6 +52,15 @@ import {
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { ESTADO_LABELS, ESTADO_BADGE_CLASSES } from "@/lib/pedido-estados";
 
+const DIAS_CORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function fmtHorarioLabel(h: { diaInicio: number; horaInicio: string; diaFin: number; horaFin: string }) {
+  if (h.diaInicio === h.diaFin) {
+    return `${DIAS_CORTO[h.diaInicio]} ${h.horaInicio} – ${h.horaFin}`;
+  }
+  return `${DIAS_CORTO[h.diaInicio]} ${h.horaInicio} → ${DIAS_CORTO[h.diaFin]} ${h.horaFin}`;
+}
+
 const CATEGORIA_COLORS = [
   { base: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100", active: "bg-indigo-600 text-white border-indigo-600" },
   { base: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100", active: "bg-emerald-600 text-white border-emerald-600" },
@@ -590,6 +599,33 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
                 );
               })}
             </div>
+
+            {/* Schedule legend: show in local pedido panel for categories with horarios */}
+            {isPedido && !isAdmin && (() => {
+              const conHorario = (categorias ?? []).filter(c => c.horarios && c.horarios.length > 0);
+              if (conHorario.length === 0) return null;
+              return (
+                <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-3 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Disponibilidad por categoría</p>
+                  {conHorario.map(c => {
+                    const activeHorarios = (c.horarios ?? []).filter(h => h.activo);
+                    if (activeHorarios.length === 0) return null;
+                    return (
+                      <div key={c.id} className="flex items-center gap-2 text-sm">
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", c.disponibleAhora ? "bg-green-500" : "bg-red-400")} />
+                        <span className="font-medium">{c.nombre}:</span>
+                        <span className="text-muted-foreground">
+                          {activeHorarios.map(h => fmtHorarioLabel(h)).join(" / ")}
+                        </span>
+                        {!c.disponibleAhora && (
+                          <span className="text-xs text-red-500 font-medium">No disponible ahora</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-muted-foreground">

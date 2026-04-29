@@ -89,6 +89,15 @@ export interface LocalInput {
   activo?: boolean;
 }
 
+export interface CategoriaHorario {
+  id: number;
+  diaInicio: number;
+  horaInicio: string;
+  diaFin: number;
+  horaFin: string;
+  activo: boolean;
+}
+
 export interface Categoria {
   id: number;
   nombre: string;
@@ -97,6 +106,7 @@ export interface Categoria {
   productosCount: number;
   impuestoPct: number;
   disponibleAhora: boolean;
+  horarios: CategoriaHorario[];
 }
 
 export interface CategoriaInput {

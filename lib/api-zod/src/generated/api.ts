@@ -404,6 +404,16 @@ export const ListCategoriasResponseItem = zod.object({
   productosCount: zod.number(),
   impuestoPct: zod.number(),
   disponibleAhora: zod.boolean(),
+  horarios: zod.array(
+    zod.object({
+      id: zod.number(),
+      diaInicio: zod.number(),
+      horaInicio: zod.string(),
+      diaFin: zod.number(),
+      horaFin: zod.string(),
+      activo: zod.boolean(),
+    }),
+  ),
 });
 export const ListCategoriasResponse = zod.array(ListCategoriasResponseItem);
 
@@ -431,6 +441,16 @@ export const UpdateCategoriaResponse = zod.object({
   productosCount: zod.number(),
   impuestoPct: zod.number(),
   disponibleAhora: zod.boolean(),
+  horarios: zod.array(
+    zod.object({
+      id: zod.number(),
+      diaInicio: zod.number(),
+      horaInicio: zod.string(),
+      diaFin: zod.number(),
+      horaFin: zod.string(),
+      activo: zod.boolean(),
+    }),
+  ),
 });
 
 export const DeleteCategoriaParams = zod.object({

@@ -983,6 +983,17 @@ components:
         activo: { type: boolean }
       required: [nombre]
 
+    CategoriaHorario:
+      type: object
+      properties:
+        id: { type: integer }
+        diaInicio: { type: integer }
+        horaInicio: { type: string }
+        diaFin: { type: integer }
+        horaFin: { type: string }
+        activo: { type: boolean }
+      required: [id, diaInicio, horaInicio, diaFin, horaFin, activo]
+
     Categoria:
       type: object
       properties:
@@ -993,7 +1004,10 @@ components:
         productosCount: { type: integer }
         impuestoPct: { type: number }
         disponibleAhora: { type: boolean }
-      required: [id, nombre, activo, productosCount, impuestoPct, disponibleAhora]
+        horarios:
+          type: array
+          items: { $ref: "#/components/schemas/CategoriaHorario" }
+      required: [id, nombre, activo, productosCount, impuestoPct, disponibleAhora, horarios]
 
     CategoriaInput:
       type: object
