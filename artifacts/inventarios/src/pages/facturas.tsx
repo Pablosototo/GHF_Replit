@@ -32,7 +32,7 @@ function printFactura(factura: any) {
   // Group by tax rate for breakdown
   const taxGroups: Record<number, { base: number; impuesto: number }> = {};
   for (const d of detalles) {
-    const pct = d.impuestoPct ?? 13;
+    const pct = Number(d.impuestoPct) || 13;
     if (!taxGroups[pct]) taxGroups[pct] = { base: 0, impuesto: 0 };
     taxGroups[pct].base += d.subtotal ?? 0;
     taxGroups[pct].impuesto += d.impuesto ?? 0;
@@ -172,7 +172,7 @@ export default function Facturas() {
   const taxGroups: Record<number, { base: number; impuesto: number }> = {};
   if (detailFactura) {
     for (const d of (detailFactura.detalles ?? [])) {
-      const pct = (d as any).impuestoPct ?? 13;
+      const pct = Number((d as any).impuestoPct) || 13;
       if (!taxGroups[pct]) taxGroups[pct] = { base: 0, impuesto: 0 };
       taxGroups[pct].base += d.subtotal ?? 0;
       taxGroups[pct].impuesto += (d as any).impuesto ?? 0;

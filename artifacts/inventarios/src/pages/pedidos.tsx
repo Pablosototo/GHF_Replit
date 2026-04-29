@@ -11,7 +11,8 @@ import {
   useListProductos,
   useListLocales,
   useGetMe,
-  getListPedidosQueryKey
+  getListPedidosQueryKey,
+  getGetPedidoQueryKey
 } from "@workspace/api-client-react";
 import { ESTADOS_GESTIONABLES, ESTADO_LABELS, ESTADO_BADGE_CLASSES } from "@/lib/pedido-estados";
 import { 
@@ -103,7 +104,7 @@ function ProductoCombobox({
 }: {
   value: number | string;
   onChange: (val: number) => void;
-  productos: Array<{ id: number; nombre: string; categoriaNombre?: string | null }>;
+  productos: Array<{ id: number; nombre: string; sku?: string | null; categoriaNombre?: string | null }>;
 }) {
   const [open, setOpen] = useState(false);
   const selected = productos.find(p => p.id === Number(value));
@@ -117,34 +118,51 @@ function ProductoCombobox({
           aria-expanded={open}
           className="w-full justify-between font-normal h-10 text-left"
         >
-          <span className="truncate">
-            {selected ? selected.nombre : "Seleccione producto..."}
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">
+              {selected ? (
+                <>
+                  <span className="font-medium">{selected.nombre}</span>
+                  {selected.categoriaNombre && (
+                    <span className="ml-1.5 text-xs text-muted-foreground">({selected.categoriaNombre})</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-muted-foreground">Buscar o filtrar producto...</span>
+              )}
+            </span>
+          </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-[480px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Buscar producto..." />
-          <CommandList>
+          <CommandInput placeholder="Escriba nombre, categoría o SKU..." />
+          <CommandList className="max-h-72">
             <CommandEmpty>No se encontraron productos.</CommandEmpty>
-            <CommandGroup>
+            <CommandGroup heading={`${productos.length} producto(s) disponibles`}>
               {productos.map(p => (
                 <CommandItem
                   key={p.id}
-                  value={`${p.nombre} ${p.categoriaNombre ?? ""}`}
+                  value={`${p.nombre} ${p.categoriaNombre ?? ""} ${p.sku ?? ""}`}
                   onSelect={() => {
                     onChange(p.id);
                     setOpen(false);
                   }}
                 >
                   <Check
-                    className={cn("mr-2 h-4 w-4", Number(value) === p.id ? "opacity-100" : "opacity-0")}
+                    className={cn("mr-2 h-4 w-4 shrink-0", Number(value) === p.id ? "opacity-100" : "opacity-0")}
                   />
-                  <div className="flex-1 truncate">
-                    <span className="font-medium">{p.nombre}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate">{p.nombre}</span>
+                      {p.sku && (
+                        <span className="text-[10px] font-mono text-muted-foreground border rounded px-1">{p.sku}</span>
+                      )}
+                    </div>
                     {p.categoriaNombre && (
-                      <span className="ml-2 text-xs text-muted-foreground">({p.categoriaNombre})</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">{p.categoriaNombre}</p>
                     )}
                   </div>
                 </CommandItem>
@@ -190,7 +208,10 @@ export default function Pedidos() {
     localId: isAdmin ? undefined : me?.localId || undefined,
   } as any, { query: { refetchInterval: 10_000 } } as any);
   
-  const { data: detailPedido, isLoading: isDetailLoading } = useGetPedido(selectedPedidoId || 0);
+  const { data: detailPedido, isLoading: isDetailLoading } = useGetPedido(
+    selectedPedidoId || 0,
+    { query: { refetchInterval: 5_000, enabled: !!selectedPedidoId } } as any,
+  );
 
   const { data: productos } = useListProductos();
   const { data: locales } = useListLocales();
@@ -251,6 +272,7 @@ export default function Pedidos() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListPedidosQueryKey() });
+        if (selectedPedidoId) queryClient.invalidateQueries({ queryKey: getGetPedidoQueryKey(selectedPedidoId) });
         toast({ title: "Facturado", description: "El pedido ha sido facturado exitosamente." });
       },
       onError: (error: any) => {
@@ -833,6 +855,7 @@ function PedidoEstadoControl({
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListPedidosQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetPedidoQueryKey(pedidoId) });
         toast({ title: "Estado actualizado", description: "Se registró el cambio." });
         setNuevoEstado("");
         setNota("");

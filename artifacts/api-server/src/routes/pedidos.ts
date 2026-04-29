@@ -350,8 +350,12 @@ router.post("/:id/facturar", async (req, res) => {
     res.status(404).json({ message: "No encontrado" });
     return;
   }
-  if (p.estado !== "pendiente") {
-    res.status(400).json({ message: "El pedido no está pendiente" });
+  if (p.estado === "facturado") {
+    res.status(400).json({ message: "El pedido ya está facturado" });
+    return;
+  }
+  if (p.estado === "anulada" || p.estado === "anulado") {
+    res.status(400).json({ message: "El pedido está anulado" });
     return;
   }
 
