@@ -1205,6 +1205,7 @@ components:
         role: { type: string }
         localId: { type: integer, nullable: true }
         localNombre: { type: string, nullable: true }
+        passwordPlain: { type: string, nullable: true }
       required: [id, name, username, role]
 
     UsuarioInput:

@@ -53,7 +53,9 @@ import {
   Users,
   ShieldCheck,
   Store,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -98,6 +100,7 @@ export default function Usuarios() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<any>(null);
   const [deletingUsuario, setDeletingUsuario] = useState<any>(null);
+  const [showPasswords, setShowPasswords] = useState(false);
 
   const form = useForm<UsuarioFormValues>({
     resolver: zodResolver(usuarioSchema),
@@ -226,9 +229,15 @@ export default function Usuarios() {
           <h2 className="text-2xl font-bold tracking-tight">Usuarios</h2>
           <p className="text-muted-foreground">Gestione el acceso al sistema y roles.</p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" /> Nuevo usuario
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowPasswords(v => !v)}>
+            {showPasswords ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+            {showPasswords ? "Ocultar contraseñas" : "Ver contraseñas"}
+          </Button>
+          <Button onClick={handleAdd}>
+            <Plus className="mr-2 h-4 w-4" /> Nuevo usuario
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border bg-card">
@@ -237,7 +246,7 @@ export default function Usuarios() {
             <TableRow>
               <TableHead>Nombre</TableHead>
               <TableHead>Usuario</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Contraseña</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Local</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -248,7 +257,14 @@ export default function Usuarios() {
               <TableRow key={usuario.id}>
                 <TableCell className="font-medium">{usuario.name}</TableCell>
                 <TableCell className="font-mono text-sm">{usuario.username}</TableCell>
-                <TableCell>{usuario.email || "-"}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  {(usuario as any).passwordPlain
+                    ? showPasswords
+                      ? (usuario as any).passwordPlain
+                      : "••••••••"
+                    : <span className="text-muted-foreground text-xs">no guardada</span>
+                  }
+                </TableCell>
                 <TableCell>
                   <Badge variant={usuario.role === "admin" ? "default" : "outline"} className="capitalize">
                     {usuario.role === "admin" ? <ShieldCheck className="h-3 w-3 mr-1" /> : <Users className="h-3 w-3 mr-1" />}
@@ -283,7 +299,7 @@ export default function Usuarios() {
             ))}
             {usuarios?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No hay usuarios registrados.
                 </TableCell>
               </TableRow>

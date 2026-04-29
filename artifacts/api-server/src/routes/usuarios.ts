@@ -18,6 +18,7 @@ router.get("/", async (_req, res) => {
       role: usersTable.role,
       localId: usersTable.localId,
       localNombre: localesTable.nombre,
+      passwordPlain: usersTable.passwordPlain,
     })
     .from(usersTable)
     .leftJoin(localesTable, eq(localesTable.id, usersTable.localId))
@@ -45,6 +46,7 @@ router.post("/", async (req, res) => {
         username,
         email: email ?? null,
         passwordHash,
+        passwordPlain: password,
         role,
         localId: localId ?? null,
       })
@@ -57,6 +59,7 @@ router.post("/", async (req, res) => {
       role: row.role,
       localId: row.localId,
       localNombre: null,
+      passwordPlain: row.passwordPlain,
     });
   } catch (e) {
     res.status(400).json({ message: "El nombre de usuario ya existe" });
@@ -80,6 +83,7 @@ router.put("/:id", async (req, res) => {
   };
   if (password && password.length >= 4) {
     update.passwordHash = await bcrypt.hash(password, 10);
+    update.passwordPlain = password;
   }
   const [row] = await db
     .update(usersTable)
@@ -98,6 +102,7 @@ router.put("/:id", async (req, res) => {
     role: row.role,
     localId: row.localId,
     localNombre: null,
+    passwordPlain: row.passwordPlain,
   });
 });
 

@@ -14,4 +14,5 @@ export interface Usuario {
   role: string;
   localId?: number | null;
   localNombre?: string | null;
+  passwordPlain?: string | null;
 }

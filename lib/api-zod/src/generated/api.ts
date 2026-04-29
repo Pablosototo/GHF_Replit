@@ -825,6 +825,7 @@ export const ListUsuariosResponseItem = zod.object({
   role: zod.string(),
   localId: zod.number().nullish(),
   localNombre: zod.string().nullish(),
+  passwordPlain: zod.string().nullish(),
 });
 export const ListUsuariosResponse = zod.array(ListUsuariosResponseItem);
 
@@ -858,6 +859,7 @@ export const UpdateUsuarioResponse = zod.object({
   role: zod.string(),
   localId: zod.number().nullish(),
   localNombre: zod.string().nullish(),
+  passwordPlain: zod.string().nullish(),
 });
 
 export const DeleteUsuarioParams = zod.object({
