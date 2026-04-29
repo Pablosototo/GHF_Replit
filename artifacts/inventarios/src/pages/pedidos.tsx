@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListPedidos, 
@@ -104,13 +104,43 @@ function ProductoCombobox({
 }: {
   value: number | string;
   onChange: (val: number) => void;
-  productos: Array<{ id: number; nombre: string; sku?: string | null; categoriaNombre?: string | null }>;
+  productos: Array<{ id: number; nombre: string; sku?: string | null; categoriaNombre?: string | null; categoriaId?: number | null }>;
 }) {
   const [open, setOpen] = useState(false);
+  const [catFilter, setCatFilter] = useState<string | null>(null);
   const selected = productos.find(p => p.id === Number(value));
 
+  // Derive unique categories from products
+  const categorias = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of productos) {
+      if (p.categoriaNombre) map.set(p.categoriaNombre, p.categoriaNombre);
+    }
+    return Array.from(map.keys()).sort();
+  }, [productos]);
+
+  const filteredByCategoria = catFilter
+    ? productos.filter(p => p.categoriaNombre === catFilter)
+    : productos;
+
+  // Group filtered products by category for display
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof productos>();
+    for (const p of filteredByCategoria) {
+      const cat = p.categoriaNombre ?? "Sin categoría";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(p);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredByCategoria]);
+
+  const handleOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (!v) setCatFilter(null);
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -129,45 +159,76 @@ function ProductoCombobox({
                   )}
                 </>
               ) : (
-                <span className="text-muted-foreground">Buscar o filtrar producto...</span>
+                <span className="text-muted-foreground">Buscar o filtrar por categoría...</span>
               )}
             </span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[480px] p-0" align="start">
+      <PopoverContent className="w-[520px] p-0" align="start">
+        {/* Category filter chips */}
+        {categorias.length > 1 && (
+          <div className="flex flex-wrap gap-1.5 border-b px-3 py-2 bg-muted/30">
+            <button
+              type="button"
+              onClick={() => setCatFilter(null)}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors",
+                catFilter === null
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:bg-accent",
+              )}
+            >
+              Todas
+            </button>
+            {categorias.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCatFilter(catFilter === cat ? null : cat)}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors",
+                  catFilter === cat
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:bg-accent",
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
         <Command>
-          <CommandInput placeholder="Escriba nombre, categoría o SKU..." />
-          <CommandList className="max-h-72">
+          <CommandInput placeholder="Buscar por nombre o SKU..." />
+          <CommandList className="max-h-64">
             <CommandEmpty>No se encontraron productos.</CommandEmpty>
-            <CommandGroup heading={`${productos.length} producto(s) disponibles`}>
-              {productos.map(p => (
-                <CommandItem
-                  key={p.id}
-                  value={`${p.nombre} ${p.categoriaNombre ?? ""} ${p.sku ?? ""}`}
-                  onSelect={() => {
-                    onChange(p.id);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn("mr-2 h-4 w-4 shrink-0", Number(value) === p.id ? "opacity-100" : "opacity-0")}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium truncate">{p.nombre}</span>
-                      {p.sku && (
-                        <span className="text-[10px] font-mono text-muted-foreground border rounded px-1">{p.sku}</span>
-                      )}
+            {groups.map(([cat, prods]) => (
+              <CommandGroup key={cat} heading={cat}>
+                {prods.map(p => (
+                  <CommandItem
+                    key={p.id}
+                    value={`${p.nombre} ${p.categoriaNombre ?? ""} ${p.sku ?? ""}`}
+                    onSelect={() => {
+                      onChange(p.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn("mr-2 h-4 w-4 shrink-0", Number(value) === p.id ? "opacity-100" : "opacity-0")}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{p.nombre}</span>
+                        {p.sku && (
+                          <span className="text-[10px] font-mono text-muted-foreground border rounded px-1">{p.sku}</span>
+                        )}
+                      </div>
                     </div>
-                    {p.categoriaNombre && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{p.categoriaNombre}</p>
-                    )}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
