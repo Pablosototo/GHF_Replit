@@ -44,7 +44,9 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
-  Tags
+  Tags,
+  Search,
+  FilterX
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -74,6 +76,11 @@ export default function Categorias() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategoria, setEditingCategoria] = useState<any>(null);
   const [deletingCategoria, setDeletingCategoria] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filtered = categorias?.filter(c =>
+    c.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  ) ?? [];
 
   const form = useForm<CategoriaFormValues>({
     resolver: zodResolver(categoriaSchema),
@@ -174,6 +181,23 @@ export default function Categorias() {
         </Button>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {searchTerm && (
+          <Button variant="ghost" onClick={() => setSearchTerm("")}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -186,7 +210,7 @@ export default function Categorias() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categorias?.map((categoria) => (
+            {filtered.map((categoria) => (
               <TableRow key={categoria.id}>
                 <TableCell className="font-medium">{categoria.nombre}</TableCell>
                 <TableCell className="max-w-xs truncate">{categoria.descripcion || "-"}</TableCell>
@@ -216,7 +240,7 @@ export default function Categorias() {
                 </TableCell>
               </TableRow>
             ))}
-            {categorias?.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
                   No hay categorías registradas.

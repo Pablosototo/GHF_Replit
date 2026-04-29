@@ -22,6 +22,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   Select, 
   SelectContent, 
@@ -37,7 +38,9 @@ import {
   Printer,
   Eye,
   FileText,
-  FilePlus2
+  FilePlus2,
+  Search,
+  FilterX
 } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -48,6 +51,7 @@ export default function Facturas() {
   const isAdmin = me?.role === "admin";
   
   const [estadoFilter, setEstadoFilter] = useState("todos");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedFacturaId, setSelectedFacturaId] = useState<number | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -59,6 +63,14 @@ export default function Facturas() {
   const { data: detailFactura, isLoading: isDetailLoading } = useGetFactura(selectedFacturaId || 0);
 
   const { data: locales } = useListLocales();
+
+  const filteredFacturas = facturas?.filter(f => {
+    const term = searchTerm.toLowerCase();
+    return !term ||
+      (f.numeroFactura || "").toLowerCase().includes(term) ||
+      (f.localNombre || "").toLowerCase().includes(term) ||
+      (f.clienteNombre || "").toLowerCase().includes(term);
+  }) ?? [];
 
   const handleOpenDetail = (id: number) => {
     setSelectedFacturaId(id);
@@ -102,6 +114,23 @@ export default function Facturas() {
         </TabsList>
       </Tabs>
 
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por número, local o cliente..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {searchTerm && (
+          <Button variant="ghost" onClick={() => setSearchTerm("")}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -116,7 +145,7 @@ export default function Facturas() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {facturas?.map((factura) => (
+            {filteredFacturas.map((factura) => (
               <TableRow key={factura.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleOpenDetail(factura.id)}>
                 <TableCell className="font-mono font-bold">{factura.numeroFactura}</TableCell>
                 <TableCell className="text-xs">{formatDateTime(factura.fecha)}</TableCell>
@@ -148,7 +177,7 @@ export default function Facturas() {
                 </TableCell>
               </TableRow>
             ))}
-            {facturas?.length === 0 && (
+            {filteredFacturas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">

@@ -42,7 +42,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
-  Search
+  Search,
+  FilterX
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -75,6 +76,8 @@ export default function Movimientos() {
   
   const [limit, setLimit] = useState(50);
   const [localFilter, setLocalFilter] = useState<string>(isAdmin ? "all" : (me?.localId?.toString() || "all"));
+  const [searchTerm, setSearchTerm] = useState("");
+  const [tipoFilter, setTipoFilter] = useState("todos");
   
   const { data: movimientos, isLoading } = useListMovimientos({
     localId: localFilter !== "all" ? Number(localFilter) : undefined,
@@ -83,6 +86,15 @@ export default function Movimientos() {
   
   const { data: productos } = useListProductos();
   const { data: locales } = useListLocales();
+
+  const filtered = movimientos?.filter(m => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = !term ||
+      m.productoNombre.toLowerCase().includes(term) ||
+      (m.localNombre || "").toLowerCase().includes(term);
+    const matchesTipo = tipoFilter === "todos" || m.tipo === tipoFilter;
+    return matchesSearch && matchesTipo;
+  }) ?? [];
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -135,11 +147,20 @@ export default function Movimientos() {
         </Button>
       </div>
 
-      {isAdmin && (
-        <div className="w-[250px]">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por producto o local..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {isAdmin && (
           <Select value={localFilter} onValueChange={setLocalFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filtrar por local" />
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Local" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los locales</SelectItem>
@@ -148,8 +169,25 @@ export default function Movimientos() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        )}
+        <Select value={tipoFilter} onValueChange={setTipoFilter}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los tipos</SelectItem>
+            <SelectItem value="entrada">Entrada</SelectItem>
+            <SelectItem value="salida">Salida</SelectItem>
+            <SelectItem value="venta">Venta</SelectItem>
+            <SelectItem value="ajuste">Ajuste</SelectItem>
+          </SelectContent>
+        </Select>
+        {(searchTerm || tipoFilter !== "todos") && (
+          <Button variant="ghost" onClick={() => { setSearchTerm(""); setTipoFilter("todos"); }}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
 
       <div className="rounded-md border bg-card">
         <Table>
@@ -165,7 +203,7 @@ export default function Movimientos() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {movimientos?.map((mov) => (
+            {filtered.map((mov) => (
               <TableRow key={mov.id}>
                 <TableCell className="text-xs">{formatDateTime(mov.createdAt)}</TableCell>
                 <TableCell className="font-medium">{mov.productoNombre}</TableCell>
@@ -200,7 +238,7 @@ export default function Movimientos() {
                 </TableCell>
               </TableRow>
             ))}
-            {movimientos?.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">

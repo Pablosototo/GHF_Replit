@@ -45,7 +45,9 @@ import {
   Trash2, 
   Building,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Search,
+  FilterX
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -77,6 +79,12 @@ export default function Sociedades() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSociedad, setEditingSociedad] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filtered = sociedades?.filter(s =>
+    s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.cedulaJuridica || "").toLowerCase().includes(searchTerm.toLowerCase())
+  ) ?? [];
   const [deletingSociedad, setDeletingSociedad] = useState<any>(null);
 
   const form = useForm<SociedadFormValues>({
@@ -187,6 +195,23 @@ export default function Sociedades() {
         </Button>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre o cédula..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {searchTerm && (
+          <Button variant="ghost" onClick={() => setSearchTerm("")}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -201,7 +226,7 @@ export default function Sociedades() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sociedades?.map((sociedad) => (
+            {filtered.map((sociedad) => (
               <TableRow key={sociedad.id}>
                 <TableCell className="font-medium">{sociedad.nombre}</TableCell>
                 <TableCell>{sociedad.cedulaJuridica || "-"}</TableCell>
@@ -233,7 +258,7 @@ export default function Sociedades() {
                 </TableCell>
               </TableRow>
             ))}
-            {sociedades?.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
                   No hay sociedades registradas.

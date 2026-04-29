@@ -42,7 +42,9 @@ import {
   Pencil, 
   Trash2,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Search,
+  FilterX
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -71,6 +73,11 @@ export default function Marcas() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMarca, setEditingMarca] = useState<any>(null);
   const [deletingMarca, setDeletingMarca] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filtered = marcas?.filter(m =>
+    m.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  ) ?? [];
 
   const form = useForm<MarcaFormValues>({
     resolver: zodResolver(marcaSchema),
@@ -168,6 +175,23 @@ export default function Marcas() {
         </Button>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {searchTerm && (
+          <Button variant="ghost" onClick={() => setSearchTerm("")}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -179,7 +203,7 @@ export default function Marcas() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {marcas?.map((marca) => (
+            {filtered.map((marca) => (
               <TableRow key={marca.id}>
                 <TableCell className="font-medium">{marca.nombre}</TableCell>
                 <TableCell className="text-center">{marca.localesCount}</TableCell>
@@ -208,7 +232,7 @@ export default function Marcas() {
                 </TableCell>
               </TableRow>
             ))}
-            {marcas?.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
                   No hay marcas registradas.

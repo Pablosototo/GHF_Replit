@@ -60,7 +60,9 @@ import {
   Ban,
   Trash2,
   Package,
-  Eye
+  Eye,
+  Search,
+  FilterX
 } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -97,6 +99,7 @@ export default function Pedidos() {
   const isAdmin = me?.role === "admin";
   
   const [estadoFilter, setEstadoFilter] = useState("todos");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -111,6 +114,13 @@ export default function Pedidos() {
 
   const { data: productos } = useListProductos();
   const { data: locales } = useListLocales();
+
+  const filteredPedidos = pedidos?.filter(p => {
+    const term = searchTerm.toLowerCase();
+    return !term ||
+      (p.localNombre || "").toLowerCase().includes(term) ||
+      p.id.toString().includes(term);
+  }) ?? [];
 
   const form = useForm<PedidoFormValues>({
     resolver: zodResolver(pedidoSchema),
@@ -206,6 +216,23 @@ export default function Pedidos() {
         </TabsList>
       </Tabs>
 
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por ID o local..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {searchTerm && (
+          <Button variant="ghost" onClick={() => setSearchTerm("")}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -219,7 +246,7 @@ export default function Pedidos() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pedidos?.map((pedido) => (
+            {filteredPedidos.map((pedido) => (
               <TableRow key={pedido.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleOpenDetail(pedido.id)}>
                 <TableCell className="font-mono text-xs">#{pedido.id}</TableCell>
                 <TableCell className="text-xs">{formatDateTime(pedido.createdAt)}</TableCell>
@@ -265,7 +292,7 @@ export default function Pedidos() {
                 </TableCell>
               </TableRow>
             ))}
-            {pedidos?.length === 0 && (
+            {filteredPedidos.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">

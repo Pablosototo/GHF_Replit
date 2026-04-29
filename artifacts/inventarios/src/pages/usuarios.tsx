@@ -55,7 +55,9 @@ import {
   Store,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Search,
+  FilterX
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -101,6 +103,18 @@ export default function Usuarios() {
   const [editingUsuario, setEditingUsuario] = useState<any>(null);
   const [deletingUsuario, setDeletingUsuario] = useState<any>(null);
   const [showPasswords, setShowPasswords] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("todos");
+
+  const filtered = usuarios?.filter(u => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = !term ||
+      u.name.toLowerCase().includes(term) ||
+      u.username.toLowerCase().includes(term) ||
+      (u.localNombre || "").toLowerCase().includes(term);
+    const matchesRole = roleFilter === "todos" || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  }) ?? [];
 
   const form = useForm<UsuarioFormValues>({
     resolver: zodResolver(usuarioSchema),
@@ -240,6 +254,33 @@ export default function Usuarios() {
         </div>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre, usuario o local..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Rol" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los roles</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="local">Local</SelectItem>
+          </SelectContent>
+        </Select>
+        {(searchTerm || roleFilter !== "todos") && (
+          <Button variant="ghost" onClick={() => { setSearchTerm(""); setRoleFilter("todos"); }}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -253,7 +294,7 @@ export default function Usuarios() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {usuarios?.map((usuario) => (
+            {filtered.map((usuario) => (
               <TableRow key={usuario.id}>
                 <TableCell className="font-medium">{usuario.name}</TableCell>
                 <TableCell className="font-mono text-sm">{usuario.username}</TableCell>
@@ -297,7 +338,7 @@ export default function Usuarios() {
                 </TableCell>
               </TableRow>
             ))}
-            {usuarios?.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No hay usuarios registrados.

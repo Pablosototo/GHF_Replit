@@ -52,7 +52,9 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
-  Store
+  Store,
+  Search,
+  FilterX
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,6 +91,18 @@ export default function Locales() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLocal, setEditingLocal] = useState<any>(null);
   const [deletingLocal, setDeletingLocal] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [marcaFilter, setMarcaFilter] = useState("todos");
+
+  const filtered = locales?.filter(l => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = !term ||
+      l.nombre.toLowerCase().includes(term) ||
+      (l.codigo || "").toLowerCase().includes(term) ||
+      (l.marcaNombre || "").toLowerCase().includes(term);
+    const matchesMarca = marcaFilter === "todos" || l.marcaId?.toString() === marcaFilter;
+    return matchesSearch && matchesMarca;
+  }) ?? [];
 
   const form = useForm<LocalFormValues>({
     resolver: zodResolver(localSchema),
@@ -204,6 +218,34 @@ export default function Locales() {
         </Button>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre, código o marca..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Select value={marcaFilter} onValueChange={setMarcaFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Marca" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas las marcas</SelectItem>
+            {marcas?.map((m) => (
+              <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(searchTerm || marcaFilter !== "todos") && (
+          <Button variant="ghost" onClick={() => { setSearchTerm(""); setMarcaFilter("todos"); }}>
+            <FilterX className="mr-2 h-4 w-4" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -218,7 +260,7 @@ export default function Locales() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {locales?.map((local) => (
+            {filtered.map((local) => (
               <TableRow key={local.id}>
                 <TableCell className="font-medium">{local.nombre}</TableCell>
                 <TableCell>{local.codigo || "-"}</TableCell>
@@ -255,7 +297,7 @@ export default function Locales() {
                 </TableCell>
               </TableRow>
             ))}
-            {locales?.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
                   No hay locales registrados.
