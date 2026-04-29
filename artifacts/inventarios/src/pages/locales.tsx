@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListLocales, useCreateLocal, useUpdateLocal, useDeleteLocal,
   useListMarcas, useListSociedades, getListLocalesQueryKey, useListProductos,
-  useListCategorias,
+  useListCategorias, getListCategoriasQueryKey,
 } from "@workspace/api-client-react";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  Loader2, Plus, Pencil, Trash2, CheckCircle2, XCircle, Store, Search, FilterX, Package
+  Loader2, Plus, Pencil, Trash2, CheckCircle2, XCircle, Store, Search, FilterX, Package, X
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,27 +54,20 @@ const localSchema = z.object({
 });
 type LocalFormValues = z.infer<typeof localSchema>;
 
-interface ScheduleGroup {
-  key: string;
-  label: string;
-  diaInicio: number;
-  horaInicio: string;
-  diaFin: number;
-  horaFin: string;
-  disponibleAhora: boolean;
-  categorias: { id: number; nombre: string }[];
-  categoriaIds: Set<number>;
-}
+const DEFAULT_H = { categoriaId: "", diaInicio: "1", horaInicio: "08:00", diaFin: "1", horaFin: "18:00" };
 
 function ProductosLocalPanel({ localId }: { localId: number }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { data: productos } = useListProductos({ activo: true } as any);
   const { data: categorias } = useListCategorias();
   const [disabledIds, setDisabledIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedScheduleKey, setSelectedScheduleKey] = useState<string | null>(null);
+  const [filterCatId, setFilterCatId] = useState<number | null>(null);
+  const [addingHorario, setAddingHorario] = useState(false);
+  const [newH, setNewH] = useState(DEFAULT_H);
 
   useEffect(() => {
     setLoading(true);
@@ -87,39 +80,56 @@ function ProductosLocalPanel({ localId }: { localId: number }) {
       .finally(() => setLoading(false));
   }, [localId]);
 
-  // Build schedule groups from categories with horarios
-  const scheduleGroups: ScheduleGroup[] = (() => {
-    const map = new Map<string, ScheduleGroup>();
-    for (const cat of categorias ?? []) {
-      const activeHorarios = (cat.horarios ?? []).filter(h => h.activo);
-      for (const h of activeHorarios) {
-        const key = `${h.diaInicio}-${h.horaInicio}-${h.diaFin}-${h.horaFin}`;
-        if (!map.has(key)) {
-          map.set(key, {
-            key,
-            label: fmtRango(h.diaInicio, h.horaInicio, h.diaFin, h.horaFin),
-            diaInicio: h.diaInicio,
-            horaInicio: h.horaInicio,
-            diaFin: h.diaFin,
-            horaFin: h.horaFin,
-            disponibleAhora: cat.disponibleAhora ?? true,
-            categorias: [],
-            categoriaIds: new Set(),
-          });
-        }
-        const g = map.get(key)!;
-        if (!g.categoriaIds.has(cat.id)) {
-          g.categorias.push({ id: cat.id, nombre: cat.nombre });
-          g.categoriaIds.add(cat.id);
-          // If any category in this group is available now, mark the group as available
-          if (cat.disponibleAhora) g.disponibleAhora = true;
-        }
-      }
+  // Flat list of all individual horarios from all categories
+  const allHorarios = useMemo(() => {
+    return (categorias ?? [])
+      .flatMap(c => (c.horarios ?? []).map(h => ({
+        ...h, catId: c.id, catNombre: c.nombre, disponibleAhora: c.disponibleAhora ?? true,
+      })))
+      .sort((a, b) => a.diaInicio !== b.diaInicio ? a.diaInicio - b.diaInicio : a.horaInicio.localeCompare(b.horaInicio));
+  }, [categorias]);
+
+  const refreshCats = () => qc.invalidateQueries({ queryKey: getListCategoriasQueryKey() });
+
+  const handleAddHorario = async () => {
+    if (!newH.categoriaId) {
+      toast({ variant: "destructive", title: "Seleccione una categoría" });
+      return;
     }
-    return Array.from(map.values()).sort((a, b) =>
-      a.diaInicio !== b.diaInicio ? a.diaInicio - b.diaInicio : a.horaInicio.localeCompare(b.horaInicio)
-    );
-  })();
+    try {
+      const r = await fetch(`/api/categorias/${newH.categoriaId}/horarios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          diaInicio: Number(newH.diaInicio),
+          horaInicio: newH.horaInicio,
+          diaFin: Number(newH.diaFin),
+          horaFin: newH.horaFin,
+        }),
+      });
+      if (!r.ok) throw new Error();
+      toast({ title: "Horario agregado" });
+      setAddingHorario(false);
+      setNewH(DEFAULT_H);
+      refreshCats();
+    } catch {
+      toast({ variant: "destructive", title: "Error al agregar horario" });
+    }
+  };
+
+  const handleDeleteHorario = async (catId: number, hId: number) => {
+    await fetch(`/api/categorias/${catId}/horarios/${hId}`, { method: "DELETE" });
+    refreshCats();
+  };
+
+  const handleToggleHorario = async (catId: number, h: typeof allHorarios[0]) => {
+    await fetch(`/api/categorias/${catId}/horarios/${h.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ diaInicio: h.diaInicio, horaInicio: h.horaInicio, diaFin: h.diaFin, horaFin: h.horaFin, activo: !h.activo }),
+    });
+    refreshCats();
+  };
 
   const toggle = (id: number, enabled: boolean) => {
     setDisabledIds(prev => {
@@ -131,12 +141,8 @@ function ProductosLocalPanel({ localId }: { localId: number }) {
   };
 
   const toggleAll = (enabled: boolean) => {
-    if (enabled) {
-      setDisabledIds(new Set());
-    } else {
-      const allIds = (productos ?? []).map(p => p.id);
-      setDisabledIds(new Set(allIds));
-    }
+    if (enabled) setDisabledIds(new Set());
+    else setDisabledIds(new Set((productos ?? []).map(p => p.id)));
   };
 
   const handleSave = async () => {
@@ -155,73 +161,130 @@ function ProductosLocalPanel({ localId }: { localId: number }) {
     }
   };
 
-  const selectedGroup = scheduleGroups.find(g => g.key === selectedScheduleKey);
-
   const filteredProductos = (productos ?? []).filter(p => {
     const matchesSearch = !searchTerm ||
       p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.categoriaNombre || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSchedule = !selectedGroup || selectedGroup.categoriaIds.has(p.categoriaId ?? -1);
-    return matchesSearch && matchesSchedule;
+    const matchesCat = filterCatId === null || p.categoriaId === filterCatId;
+    return matchesSearch && matchesCat;
   });
+
+  const DiaSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {DIAS_CORTO.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 
   return (
     <div className="space-y-4">
 
-      {/* Schedule groups panel */}
-      {scheduleGroups.length > 0 && (
-        <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Horarios de disponibilidad
-            </p>
-            {selectedScheduleKey && (
-              <button
-                onClick={() => setSelectedScheduleKey(null)}
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-              >
+      {/* Horarios CRUD panel */}
+      <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Horarios de disponibilidad por categoría
+          </p>
+          <div className="flex items-center gap-2">
+            {filterCatId !== null && (
+              <button onClick={() => setFilterCatId(null)}
+                className="text-xs text-muted-foreground hover:text-foreground underline">
                 Ver todos
               </button>
             )}
+            <Button size="sm" variant="outline" className="h-7 text-xs"
+              onClick={() => { setAddingHorario(true); setNewH(DEFAULT_H); }}>
+              <Plus className="h-3 w-3 mr-1" /> Agregar
+            </Button>
           </div>
-          <div className="space-y-1.5">
-            {scheduleGroups.map(g => {
-              const isSelected = selectedScheduleKey === g.key;
+        </div>
+
+        {addingHorario && (
+          <div className="border rounded-lg p-3 space-y-3 bg-background">
+            <p className="text-sm font-medium">Nuevo horario de categoría</p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Categoría</label>
+              <Select value={newH.categoriaId} onValueChange={v => setNewH(h => ({ ...h, categoriaId: v }))}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(categorias ?? []).map(c => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Inicio</p>
+                <DiaSelect value={newH.diaInicio} onChange={v => setNewH(h => ({ ...h, diaInicio: v }))} />
+                <Input className="h-8 text-sm" type="time" value={newH.horaInicio}
+                  onChange={e => setNewH(h => ({ ...h, horaInicio: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fin</p>
+                <DiaSelect value={newH.diaFin} onChange={v => setNewH(h => ({ ...h, diaFin: v }))} />
+                <Input className="h-8 text-sm" type="time" value={newH.horaFin}
+                  onChange={e => setNewH(h => ({ ...h, horaFin: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleAddHorario}>Guardar</Button>
+              <Button size="sm" variant="ghost" onClick={() => setAddingHorario(false)}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+
+        {allHorarios.length === 0 && !addingHorario ? (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            Sin horarios — todas las categorías están siempre disponibles.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {allHorarios.map(h => {
+              const isFiltered = filterCatId === h.catId;
               return (
-                <button
-                  key={g.key}
-                  onClick={() => setSelectedScheduleKey(isSelected ? null : g.key)}
+                <div
+                  key={h.id}
+                  onClick={() => setFilterCatId(isFiltered ? null : h.catId)}
                   className={[
-                    "w-full text-left flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                    isSelected
-                      ? "bg-primary/10 border border-primary/30"
-                      : "hover:bg-muted/50 border border-transparent",
+                    "flex items-center gap-3 rounded-md px-3 py-2 cursor-pointer transition-colors",
+                    isFiltered ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/40 border border-transparent",
                   ].join(" ")}
                 >
-                  <span
-                    className={["h-2.5 w-2.5 rounded-full shrink-0 mt-0.5",
-                      g.disponibleAhora ? "bg-green-500" : "bg-red-400"].join(" ")}
-                  />
-                  <span className="font-medium text-sm min-w-[11rem]">{g.label}</span>
-                  <span className="flex flex-wrap gap-1">
-                    {g.categorias.map(c => (
-                      <Badge key={c.id} variant="outline" className="text-xs h-5 px-1.5">
-                        {c.nombre}
-                      </Badge>
-                    ))}
+                  <span className={["h-2 w-2 rounded-full shrink-0",
+                    h.activo && h.disponibleAhora ? "bg-green-500" : h.activo ? "bg-amber-400" : "bg-muted-foreground/40"
+                  ].join(" ")} />
+                  <Badge variant="secondary" className="text-xs shrink-0">{h.catNombre}</Badge>
+                  <span className="text-sm flex-1 text-muted-foreground">
+                    {fmtRango(h.diaInicio, h.horaInicio, h.diaFin, h.horaFin)}
                   </span>
-                </button>
+                  <Switch
+                    checked={h.activo}
+                    onCheckedChange={() => handleToggleHorario(h.catId, h)}
+                    onClick={e => e.stopPropagation()}
+                  />
+                  <Button
+                    variant="ghost" size="icon" className="h-6 w-6 text-destructive shrink-0"
+                    onClick={e => { e.stopPropagation(); handleDeleteHorario(h.catId, h.id); }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <p className="text-sm text-muted-foreground">
         Marque los productos disponibles para pedir desde este local.
-        {selectedGroup && (
+        {filterCatId !== null && (
           <span className="ml-1 text-primary font-medium">
-            Filtrando por: {selectedGroup.label}
+            Filtrando por: {(categorias ?? []).find(c => c.id === filterCatId)?.nombre}
           </span>
         )}
       </p>
@@ -239,7 +302,7 @@ function ProductosLocalPanel({ localId }: { localId: number }) {
       {loading ? (
         <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : (
-        <div className="max-h-64 overflow-y-auto space-y-1 rounded-md border p-2">
+        <div className="max-h-56 overflow-y-auto space-y-1 rounded-md border p-2">
           {filteredProductos.map(p => {
             const enabled = !disabledIds.has(p.id);
             return (
