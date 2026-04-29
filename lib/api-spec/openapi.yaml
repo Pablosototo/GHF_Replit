@@ -1015,6 +1015,7 @@ components:
         presentacion: { type: string, nullable: true }
         stockMinimo: { type: integer }
         activo: { type: boolean }
+        impuestoPct: { type: number, nullable: true }
       required: [id, nombre, precio, precioEntrada, stockMinimo, activo]
 
     ProductoInput:

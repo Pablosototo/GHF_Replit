@@ -454,6 +454,7 @@ export const ListProductosResponseItem = zod.object({
   presentacion: zod.string().nullish(),
   stockMinimo: zod.number(),
   activo: zod.boolean(),
+  impuestoPct: zod.number().nullish(),
 });
 export const ListProductosResponse = zod.array(ListProductosResponseItem);
 
@@ -485,6 +486,7 @@ export const GetProductoResponse = zod.object({
   presentacion: zod.string().nullish(),
   stockMinimo: zod.number(),
   activo: zod.boolean(),
+  impuestoPct: zod.number().nullish(),
 });
 
 export const UpdateProductoParams = zod.object({
@@ -515,6 +517,7 @@ export const UpdateProductoResponse = zod.object({
   presentacion: zod.string().nullish(),
   stockMinimo: zod.number(),
   activo: zod.boolean(),
+  impuestoPct: zod.number().nullish(),
 });
 
 export const DeleteProductoParams = zod.object({

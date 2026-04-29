@@ -115,6 +115,7 @@ export interface Producto {
   presentacion?: string | null;
   stockMinimo: number;
   activo: boolean;
+  impuestoPct?: number | null;
 }
 
 export interface ProductoInput {

@@ -68,6 +68,7 @@ interface CartLine {
   nombre: string;
   precioUnitario: number;
   cantidad: number;
+  impuestoPct: number;
 }
 
 interface CatalogoProps {
@@ -92,7 +93,6 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
   const [busqueda, setBusqueda] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [observaciones, setObservaciones] = useState("");
-  const [impuestoPct, setImpuestoPct] = useState<number>(13);
   const [localId, setLocalId] = useState<number | null>(me?.localId ?? null);
   const [cartOpen, setCartOpen] = useState(false);
 
@@ -138,6 +138,7 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
           nombre: p.nombre,
           precioUnitario: Number(p.precio),
           cantidad: 1,
+          impuestoPct: p.impuestoPct ?? 13,
         },
       ];
     });
@@ -191,7 +192,21 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
     () => cart.reduce((sum, c) => sum + c.precioUnitario * c.cantidad, 0),
     [cart],
   );
-  const impuesto = Number((subtotal * (impuestoPct / 100)).toFixed(2));
+  const taxGroups = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const c of cart) {
+      const lineSubtotal = c.precioUnitario * c.cantidad;
+      const lineTax = Number((lineSubtotal * (c.impuestoPct / 100)).toFixed(2));
+      map.set(c.impuestoPct, (map.get(c.impuestoPct) ?? 0) + lineTax);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([pct, monto]) => ({ pct, monto: Number(monto.toFixed(2)) }));
+  }, [cart]);
+  const impuesto = useMemo(
+    () => Number(taxGroups.reduce((sum, g) => sum + g.monto, 0).toFixed(2)),
+    [taxGroups],
+  );
   const total = Number((subtotal + impuesto).toFixed(2));
   const totalUnidades = useMemo(
     () => cart.reduce((sum, c) => sum + c.cantidad, 0),
@@ -231,7 +246,7 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
         {
           data: {
             ...basePayload,
-            impuestoPct,
+            impuestoPct: 0,
             detalles: cart.map((c) => ({
               productoId: c.productoId,
               cantidad: c.cantidad,
@@ -418,21 +433,6 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
           />
-          {isFactura && (
-            <div className="flex items-center gap-2">
-              <label className="flex-1 text-xs text-muted-foreground">
-                Impuesto %
-              </label>
-              <Input
-                type="number"
-                className="w-24"
-                value={impuestoPct}
-                onChange={(e) => setImpuestoPct(Number(e.target.value) || 0)}
-                min={0}
-                max={100}
-              />
-            </div>
-          )}
         </div>
         <Separator />
         {isFactura ? (
@@ -441,10 +441,12 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
               <span>Subtotal</span>
               <span className="tabular-nums">{formatCurrency(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Impuesto ({impuestoPct}%)</span>
-              <span className="tabular-nums">{formatCurrency(impuesto)}</span>
-            </div>
+            {taxGroups.map((g) => (
+              <div key={g.pct} className="flex justify-between text-muted-foreground">
+                <span>Impuesto {g.pct}%</span>
+                <span className="tabular-nums">{formatCurrency(g.monto)}</span>
+              </div>
+            ))}
             <div className="flex justify-between border-t pt-2 text-base font-bold">
               <span>Total</span>
               <span className="tabular-nums">{formatCurrency(total)}</span>
@@ -493,6 +495,7 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
         nombre: prod.nombre,
         precioUnitario: Number(prod.precio),
         cantidad: l.cantidad,
+        impuestoPct: prod.impuestoPct ?? 13,
       });
     }
     if (nuevasLineas.length === 0) {

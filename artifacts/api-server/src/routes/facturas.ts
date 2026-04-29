@@ -221,6 +221,8 @@ router.post("/", async (req, res) => {
       cantidad: d.cantidad,
       precioUnitario: d.precioUnitario,
       subtotal: d.subtotal,
+      impuestoPct: d.impuestoPct,
+      impuesto: d.impuesto,
     })),
   });
 });
