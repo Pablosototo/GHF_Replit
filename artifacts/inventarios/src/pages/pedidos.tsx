@@ -62,7 +62,8 @@ import {
   Package,
   Eye,
   Search,
-  FilterX
+  FilterX,
+  Printer
 } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -185,6 +186,104 @@ export default function Pedidos() {
     setIsDetailOpen(true);
   };
 
+  const fmtCurrencyPrint = (val: number | null | undefined) => {
+    if (val == null) return "₡0,00";
+    return "₡" + val.toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const fmtDatePrint = (str: string | null | undefined) => {
+    if (!str) return "-";
+    const d = new Date(str);
+    const date = d.toLocaleDateString("es-CR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const time = d.toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" });
+    return `${date} ${time}`;
+  };
+
+  const printPedidoWindow = (pedido: any) => {
+    const win = window.open("", "_blank", "width=850,height=650");
+    if (!win) {
+      toast({ variant: "destructive", title: "Bloqueado", description: "Active las ventanas emergentes para imprimir." });
+      return;
+    }
+    const estadoLabel = (ESTADO_LABELS[pedido.estado] ?? pedido.estado).toUpperCase();
+    const rows = pedido.detalles.map((d: any) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${d.productoNombre}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${d.cantidad}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">${fmtCurrencyPrint(d.precioUnitario)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">${fmtCurrencyPrint(d.subtotal)}</td>
+      </tr>`).join("");
+
+    win.document.write(`<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8">
+<title>Pedido #${String(pedido.id).padStart(6,"0")}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:28px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:14px;border-bottom:2px solid #111}
+.company{font-size:18px;font-weight:700}
+.company-sub{font-size:10px;color:#888;margin-top:3px}
+.doc-title{font-size:22px;font-weight:700;text-align:right}
+.doc-num{font-size:12px;color:#666;text-align:right;margin-top:2px}
+.badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:.03em;border:1px solid #d1d5db;background:#f3f4f6;margin-top:5px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.meta-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#888;letter-spacing:.05em;margin-bottom:3px}
+.meta-value{font-size:13px;font-weight:600}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{background:#f3f4f6;padding:7px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:#555;letter-spacing:.04em}
+th.r{text-align:right}
+th.c{text-align:center}
+.totals{display:flex;justify-content:flex-end;margin-bottom:20px}
+.totals-box{width:230px}
+.trow{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}
+.trow.final{font-size:14px;font-weight:700;border-top:1px solid #111;padding-top:7px;margin-top:5px}
+.obs{background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:10px 12px;font-size:11px;color:#555;margin-bottom:20px}
+.obs-lbl{font-weight:700;color:#333;margin-bottom:4px}
+.footer{border-top:1px solid #e5e7eb;padding-top:10px;text-align:center;font-size:10px;color:#aaa}
+@media print{body{padding:12px}}
+</style></head><body>
+<div class="hdr">
+  <div><div class="company">GHF Holding</div><div class="company-sub">Inventarios y Pedidos</div></div>
+  <div>
+    <div class="doc-title">PEDIDO</div>
+    <div class="doc-num">#${String(pedido.id).padStart(6,"0")}</div>
+    <div class="doc-num"><span class="badge">${estadoLabel}</span></div>
+  </div>
+</div>
+<div class="meta">
+  <div><div class="meta-label">Local solicitante</div><div class="meta-value">${pedido.localNombre ?? "—"}</div></div>
+  <div style="text-align:right"><div class="meta-label">Fecha del pedido</div><div class="meta-value">${fmtDatePrint(pedido.createdAt)}</div></div>
+</div>
+<table>
+  <thead><tr><th>Producto</th><th class="c">Cant.</th><th class="r">Precio Unit.</th><th class="r">Subtotal</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="totals"><div class="totals-box">
+  <div class="trow"><span style="color:#666">Subtotal</span><span>${fmtCurrencyPrint(pedido.subtotal)}</span></div>
+  <div class="trow"><span style="color:#666">Impuesto (${pedido.impuestoPct}%)</span><span>${fmtCurrencyPrint(pedido.impuesto)}</span></div>
+  <div class="trow final"><span>Total</span><span>${fmtCurrencyPrint(pedido.total)}</span></div>
+</div></div>
+${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</div>${pedido.observaciones}</div>` : ""}
+<div class="footer">Generado el ${fmtDatePrint(new Date().toISOString())} &mdash; GHF Inventarios</div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 300);
+  };
+
+  const handlePrintPedido = async (pedidoId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/pedidos/${pedidoId}`);
+      if (!res.ok) throw new Error();
+      const pedido = await res.json();
+      printPedidoWindow(pedido);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo cargar el pedido para imprimir." });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -262,8 +361,11 @@ export default function Pedidos() {
                 </TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDetail(pedido.id)}>
+                    <Button variant="ghost" size="icon" title="Ver detalle" onClick={() => handleOpenDetail(pedido.id)}>
                       <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Imprimir pedido" onClick={(e) => handlePrintPedido(pedido.id, e)}>
+                      <Printer className="h-4 w-4" />
                     </Button>
                     {isAdmin && pedido.estado !== "facturado" && pedido.estado !== "anulada" && pedido.estado !== "anulado" && (
                       <Button 
@@ -544,6 +646,9 @@ export default function Pedidos() {
               <PedidoEventos pedidoId={detailPedido.id} />
 
               <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => printPedidoWindow(detailPedido)}>
+                  <Printer className="h-4 w-4 mr-2" /> Imprimir
+                </Button>
                 {isAdmin &&
                   detailPedido.estado !== "facturado" &&
                   detailPedido.estado !== "anulada" &&
