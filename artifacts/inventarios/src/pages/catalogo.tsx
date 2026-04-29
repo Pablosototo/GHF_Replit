@@ -103,9 +103,24 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
   const createPedido = useCreatePedido();
   const createFactura = useCreateFactura();
 
+  // Map of categoriaId → disponibleAhora (for schedule-based filtering)
+  const categoriaDisponible = useMemo(() => {
+    const map = new Map<number, boolean>();
+    for (const c of categorias ?? []) {
+      map.set(c.id, c.disponibleAhora ?? true);
+    }
+    return map;
+  }, [categorias]);
+
   const filtered = useMemo(() => {
     return (productos ?? []).filter((p) => {
       if (!p.activo) return false;
+      // In local panel (pedido mode, non-admin): hide products whose category is off-schedule
+      if (isPedido && !isAdmin && p.categoriaId != null) {
+        if (categoriaDisponible.has(p.categoriaId) && !categoriaDisponible.get(p.categoriaId)) {
+          return false;
+        }
+      }
       if (categoriaId !== "todas" && p.categoriaId !== categoriaId) return false;
       if (busqueda) {
         const q = busqueda.toLowerCase();
@@ -118,7 +133,7 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
       }
       return true;
     });
-  }, [productos, categoriaId, busqueda]);
+  }, [productos, categoriaId, busqueda, isPedido, isAdmin, categoriaDisponible]);
 
   const cantidadEnCarro = (productoId: number) =>
     cart.find((c) => c.productoId === productoId)?.cantidad ?? 0;
@@ -555,7 +570,10 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
               >
                 Todas
               </button>
-              {categorias?.map((c, idx) => {
+              {categorias?.filter(c =>
+                // In local pedido panel, hide off-schedule categories
+                !(isPedido && !isAdmin && !(c.disponibleAhora ?? true))
+              ).map((c, idx) => {
                 const color = CATEGORIA_COLORS[idx % CATEGORIA_COLORS.length];
                 const isActive = categoriaId === c.id;
                 return (

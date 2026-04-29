@@ -991,7 +991,9 @@ components:
         descripcion: { type: string, nullable: true }
         activo: { type: boolean }
         productosCount: { type: integer }
-      required: [id, nombre, activo, productosCount]
+        impuestoPct: { type: number }
+        disponibleAhora: { type: boolean }
+      required: [id, nombre, activo, productosCount, impuestoPct, disponibleAhora]
 
     CategoriaInput:
       type: object

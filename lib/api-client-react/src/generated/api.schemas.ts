@@ -95,6 +95,8 @@ export interface Categoria {
   descripcion?: string | null;
   activo: boolean;
   productosCount: number;
+  impuestoPct: number;
+  disponibleAhora: boolean;
 }
 
 export interface CategoriaInput {

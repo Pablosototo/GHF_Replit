@@ -7,6 +7,25 @@ import { requireAuth } from "../lib/auth";
 const router: IRouter = Router();
 router.use(requireAuth);
 
+/** Determines if a category is available right now based on its horarios (Costa Rica UTC-6). */
+function calcDisponibleAhora(horarios: Array<{ diaSemana: number; horaInicio: string; horaFin: string; activo: boolean }>): boolean {
+  const active = horarios.filter(h => h.activo);
+  if (active.length === 0) return true; // no restrictions → always available
+
+  // Compute current Costa Rica time (UTC-6, no DST)
+  const now = new Date();
+  const utcTotalMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const crTotalMin = ((utcTotalMin - 360) % 1440 + 1440) % 1440; // UTC-6
+  const crH = Math.floor(crTotalMin / 60);
+  const crM = crTotalMin % 60;
+  const utcDay = now.getUTCDay();
+  // Adjust day if CR time crossed midnight
+  const crDay = utcTotalMin < 360 ? ((utcDay - 1 + 7) % 7) : utcDay;
+  const currentTime = `${String(crH).padStart(2, "0")}:${String(crM).padStart(2, "0")}`;
+
+  return active.some(h => h.diaSemana === crDay && h.horaInicio <= currentTime && currentTime < h.horaFin);
+}
+
 router.get("/", async (_req, res) => {
   const rows = await db
     .select({
@@ -21,7 +40,20 @@ router.get("/", async (_req, res) => {
     .leftJoin(productosTable, eq(productosTable.categoriaId, categoriasTable.id))
     .groupBy(categoriasTable.id)
     .orderBy(categoriasTable.nombre);
-  res.json(rows.map((r) => ({ ...r, impuestoPct: Number(r.impuestoPct) })));
+
+  // Fetch all horarios in one query and group by categoriaId
+  const allHorarios = await db.select().from(categoriaHorariosTable);
+  const horariosByCat = new Map<number, typeof allHorarios>();
+  for (const h of allHorarios) {
+    if (!horariosByCat.has(h.categoriaId)) horariosByCat.set(h.categoriaId, []);
+    horariosByCat.get(h.categoriaId)!.push(h);
+  }
+
+  res.json(rows.map((r) => ({
+    ...r,
+    impuestoPct: Number(r.impuestoPct),
+    disponibleAhora: calcDisponibleAhora(horariosByCat.get(r.id) ?? []),
+  })));
 });
 
 router.post("/", async (req, res) => {

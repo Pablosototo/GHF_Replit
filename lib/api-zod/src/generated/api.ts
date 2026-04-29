@@ -402,6 +402,8 @@ export const ListCategoriasResponseItem = zod.object({
   descripcion: zod.string().nullish(),
   activo: zod.boolean(),
   productosCount: zod.number(),
+  impuestoPct: zod.number(),
+  disponibleAhora: zod.boolean(),
 });
 export const ListCategoriasResponse = zod.array(ListCategoriasResponseItem);
 
@@ -427,6 +429,8 @@ export const UpdateCategoriaResponse = zod.object({
   descripcion: zod.string().nullish(),
   activo: zod.boolean(),
   productosCount: zod.number(),
+  impuestoPct: zod.number(),
+  disponibleAhora: zod.boolean(),
 });
 
 export const DeleteCategoriaParams = zod.object({
