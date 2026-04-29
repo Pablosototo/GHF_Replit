@@ -805,11 +805,58 @@ function PedidoHistorialCard({
                   key={d.id}
                   className="flex items-center justify-between py-2 text-sm"
                 >
-                  <span className="font-medium">{d.productoNombre}</span>
-                  <span className="text-muted-foreground">x {d.cantidad}</span>
+                  <div className="min-w-0">
+                    <span className="font-medium">{d.productoNombre}</span>
+                    {(d as any).impuestoPct > 0 && (
+                      <span className="ml-2 text-[10px] text-muted-foreground border rounded px-1">
+                        IVA {(d as any).impuestoPct}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-muted-foreground">x {d.cantidad}</span>
+                    {(d as any).subtotal > 0 && (
+                      <span className="font-medium tabular-nums">
+                        {formatCurrency((d as any).subtotal)}
+                      </span>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
+
+            {/* Resumen financiero con desglose de impuestos */}
+            {detalle.total > 0 && (() => {
+              const taxMap = new Map<number, number>();
+              for (const d of detalle.detalles) {
+                const pct = Number((d as any).impuestoPct) || 13;
+                const imp = Number((d as any).impuesto) || 0;
+                taxMap.set(pct, (taxMap.get(pct) ?? 0) + imp);
+              }
+              const taxRows = Array.from(taxMap.entries())
+                .sort((a, b) => b[0] - a[0])
+                .map(([pct, monto]) => ({ pct, monto: Number(monto.toFixed(2)) }))
+                .filter(g => g.monto > 0);
+              return (
+                <div className="space-y-1 border-t pt-2 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span className="tabular-nums">{formatCurrency(detalle.subtotal)}</span>
+                  </div>
+                  {taxRows.map(g => (
+                    <div key={g.pct} className="flex justify-between text-muted-foreground">
+                      <span>Impuesto {g.pct}%</span>
+                      <span className="tabular-nums">{formatCurrency(g.monto)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-bold border-t pt-1">
+                    <span>Total</span>
+                    <span className="tabular-nums">{formatCurrency(detalle.total)}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {detalle.observaciones && (
               <p className="rounded-md bg-card p-2 text-xs italic text-muted-foreground">
                 "{detalle.observaciones}"
