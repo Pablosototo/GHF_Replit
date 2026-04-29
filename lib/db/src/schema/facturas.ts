@@ -32,6 +32,8 @@ export const facturaDetallesTable = pgTable("factura_detalles", {
   cantidad: integer("cantidad").notNull(),
   precioUnitario: numeric("precio_unitario", { precision: 12, scale: 2 }).notNull(),
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
+  impuestoPct: numeric("impuesto_pct", { precision: 5, scale: 2 }).notNull().default("13"),
+  impuesto: numeric("impuesto", { precision: 12, scale: 2 }).notNull().default("0"),
 });
 
 export type Factura = typeof facturasTable.$inferSelect;

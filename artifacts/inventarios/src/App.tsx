@@ -16,6 +16,7 @@ import Categorias from "@/pages/categorias";
 import Productos from "@/pages/productos";
 import Stock from "@/pages/stock";
 import Movimientos from "@/pages/movimientos";
+import UnidadesPedidas from "@/pages/unidades-pedidas";
 import Pedidos from "@/pages/pedidos";
 import Facturas from "@/pages/facturas";
 import Catalogo from "@/pages/catalogo";
@@ -47,6 +48,7 @@ function Router() {
             <Route path="/productos" component={Productos} />
             <Route path="/stock" component={Stock} />
             <Route path="/stock/movimientos" component={Movimientos} />
+            <Route path="/unidades-pedidas" component={UnidadesPedidas} />
             <Route path="/pedidos" component={Pedidos} />
             <Route path="/facturas" component={Facturas} />
             <Route path="/facturas/nueva">

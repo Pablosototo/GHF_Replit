@@ -23,11 +23,13 @@ function rowToDto(row: {
   presentacion: string | null;
   stockMinimo: number;
   activo: boolean;
+  impuestoPct?: string | null;
 }) {
   return {
     ...row,
     precio: Number(row.precio),
     precioEntrada: Number(row.precioEntrada),
+    impuestoPct: row.impuestoPct != null ? Number(row.impuestoPct) : 13,
   };
 }
 
@@ -55,6 +57,7 @@ router.get("/", async (req, res) => {
       presentacion: productosTable.presentacion,
       stockMinimo: productosTable.stockMinimo,
       activo: productosTable.activo,
+      impuestoPct: categoriasTable.impuestoPct,
     })
     .from(productosTable)
     .leftJoin(categoriasTable, eq(categoriasTable.id, productosTable.categoriaId))
@@ -79,6 +82,7 @@ router.get("/:id", async (req, res) => {
       presentacion: productosTable.presentacion,
       stockMinimo: productosTable.stockMinimo,
       activo: productosTable.activo,
+      impuestoPct: categoriasTable.impuestoPct,
     })
     .from(productosTable)
     .leftJoin(categoriasTable, eq(categoriasTable.id, productosTable.categoriaId))

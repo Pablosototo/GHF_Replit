@@ -8,3 +8,5 @@ export * from "./stock";
 export * from "./pedidos";
 export * from "./facturas";
 export * from "./configuracion";
+export * from "./categoria_horarios";
+export * from "./local_productos";

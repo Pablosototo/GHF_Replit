@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, asc, inArray, type SQL } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, type SQL } from "drizzle-orm";
 import { sendPedidoNotification } from "../lib/email";
 import {
   db,
@@ -13,6 +13,7 @@ import {
   facturaDetallesTable,
   stockTable,
   movimientosTable,
+  categoriasTable,
 } from "@workspace/db";
 import {
   CambiarEstadoPedidoBody,
@@ -42,6 +43,8 @@ async function buildPedidoDto(pedido: typeof pedidosTable.$inferSelect) {
       cantidad: pedidoDetallesTable.cantidad,
       precioUnitario: pedidoDetallesTable.precioUnitario,
       subtotal: pedidoDetallesTable.subtotal,
+      impuestoPct: pedidoDetallesTable.impuestoPct,
+      impuesto: pedidoDetallesTable.impuesto,
     })
     .from(pedidoDetallesTable)
     .where(eq(pedidoDetallesTable.pedidoId, pedido.id));
@@ -66,6 +69,8 @@ async function buildPedidoDto(pedido: typeof pedidosTable.$inferSelect) {
       cantidad: d.cantidad,
       precioUnitario: Number(d.precioUnitario),
       subtotal: Number(d.subtotal),
+      impuestoPct: Number(d.impuestoPct),
+      impuesto: Number(d.impuesto),
     })),
   };
 }
@@ -81,9 +86,16 @@ router.get("/", async (req, res) => {
   if (user.role !== "admin" && user.localId) {
     localId = user.localId;
   }
+  const { fechaInicio, fechaFin } = req.query as Record<string, string>;
   const conditions: SQL[] = [];
   if (estado) conditions.push(eq(pedidosTable.estado, estado));
   if (localId) conditions.push(eq(pedidosTable.localId, localId));
+  if (fechaInicio) conditions.push(gte(pedidosTable.createdAt, new Date(fechaInicio)));
+  if (fechaFin) {
+    const fin = new Date(fechaFin);
+    fin.setHours(23, 59, 59, 999);
+    conditions.push(lte(pedidosTable.createdAt, fin));
+  }
 
   const rows = await db
     .select({
@@ -143,39 +155,52 @@ router.post("/", async (req, res) => {
   let localId = data.localId ?? null;
   if (user.role !== "admin" && user.localId) localId = user.localId;
 
-  // Compute totals
+  // Compute totals — tax comes from each product's category
   let subtotal = 0;
+  let totalImpuesto = 0;
   const enriched: Array<{
     productoId: number;
     descripcion: string;
     cantidad: number;
     precioUnitario: number;
     subtotal: number;
+    impuestoPct: number;
+    impuesto: number;
   }> = [];
   for (const d of data.detalles) {
     const [prod] = await db
-      .select()
+      .select({
+        id: productosTable.id,
+        nombre: productosTable.nombre,
+        precio: productosTable.precio,
+        categoriaId: productosTable.categoriaId,
+        impuestoPct: categoriasTable.impuestoPct,
+      })
       .from(productosTable)
+      .leftJoin(categoriasTable, eq(categoriasTable.id, productosTable.categoriaId))
       .where(eq(productosTable.id, d.productoId))
       .limit(1);
     if (!prod) {
       res.status(400).json({ message: `Producto ${d.productoId} no existe` });
       return;
     }
-    const precio =
-      d.precioUnitario != null ? Number(d.precioUnitario) : Number(prod.precio);
+    const precio = d.precioUnitario != null ? Number(d.precioUnitario) : Number(prod.precio);
     const lineSubtotal = Number((precio * d.cantidad).toFixed(2));
+    const lineTaxPct = prod.impuestoPct != null ? Number(prod.impuestoPct) : 13;
+    const lineImpuesto = Number((lineSubtotal * (lineTaxPct / 100)).toFixed(2));
     subtotal += lineSubtotal;
+    totalImpuesto += lineImpuesto;
     enriched.push({
       productoId: d.productoId,
       descripcion: prod.nombre,
       cantidad: d.cantidad,
       precioUnitario: precio,
       subtotal: lineSubtotal,
+      impuestoPct: lineTaxPct,
+      impuesto: lineImpuesto,
     });
   }
-  const impuestoPct = data.impuestoPct ?? 0;
-  const impuesto = Number((subtotal * (impuestoPct / 100)).toFixed(2));
+  const impuesto = Number(totalImpuesto.toFixed(2));
   const total = Number((subtotal + impuesto).toFixed(2));
 
   const [pedido] = await db
@@ -201,6 +226,8 @@ router.post("/", async (req, res) => {
       cantidad: d.cantidad,
       precioUnitario: d.precioUnitario.toFixed(2),
       subtotal: d.subtotal.toFixed(2),
+      impuestoPct: d.impuestoPct.toFixed(2),
+      impuesto: d.impuesto.toFixed(2),
     });
   }
 
@@ -360,6 +387,8 @@ router.post("/:id/facturar", async (req, res) => {
       cantidad: d.cantidad,
       precioUnitario: d.precioUnitario,
       subtotal: d.subtotal,
+      impuestoPct: d.impuestoPct ?? "13",
+      impuesto: d.impuesto ?? "0",
     });
 
     // Decrement stock if local available

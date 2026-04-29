@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, type SQL } from "drizzle-orm";
+import { eq, and, desc, gte, lte, type SQL } from "drizzle-orm";
 import {
   db,
   facturasTable,
   facturaDetallesTable,
   localesTable,
   productosTable,
+  categoriasTable,
   stockTable,
   movimientosTable,
 } from "@workspace/db";
@@ -26,9 +27,16 @@ router.get("/", async (req, res) => {
   if (user.role !== "admin" && user.localId) {
     localId = user.localId;
   }
+  const { fechaInicio, fechaFin } = req.query as Record<string, string>;
   const conditions: SQL[] = [];
   if (estado) conditions.push(eq(facturasTable.estado, estado));
   if (localId) conditions.push(eq(facturasTable.localId, localId));
+  if (fechaInicio) conditions.push(gte(facturasTable.fecha, new Date(fechaInicio)));
+  if (fechaFin) {
+    const fin = new Date(fechaFin);
+    fin.setHours(23, 59, 59, 999);
+    conditions.push(lte(facturasTable.fecha, fin));
+  }
 
   const rows = await db
     .select({
@@ -82,17 +90,25 @@ router.post("/", async (req, res) => {
   }
 
   let subtotal = 0;
+  let totalImpuesto = 0;
   const enriched: Array<{
     productoId: number;
     descripcion: string;
     cantidad: number;
     precioUnitario: number;
     subtotal: number;
+    impuestoPct: number;
+    impuesto: number;
   }> = [];
   for (const d of data.detalles) {
     const [prod] = await db
-      .select()
+      .select({
+        id: productosTable.id,
+        nombre: productosTable.nombre,
+        impuestoPct: categoriasTable.impuestoPct,
+      })
       .from(productosTable)
+      .leftJoin(categoriasTable, eq(categoriasTable.id, productosTable.categoriaId))
       .where(eq(productosTable.id, d.productoId))
       .limit(1);
     if (!prod) {
@@ -100,17 +116,21 @@ router.post("/", async (req, res) => {
       return;
     }
     const lineSubtotal = Number((d.precioUnitario * d.cantidad).toFixed(2));
+    const lineTaxPct = prod.impuestoPct != null ? Number(prod.impuestoPct) : 13;
+    const lineImpuesto = Number((lineSubtotal * (lineTaxPct / 100)).toFixed(2));
     subtotal += lineSubtotal;
+    totalImpuesto += lineImpuesto;
     enriched.push({
       productoId: d.productoId,
       descripcion: prod.nombre,
       cantidad: d.cantidad,
       precioUnitario: d.precioUnitario,
       subtotal: lineSubtotal,
+      impuestoPct: lineTaxPct,
+      impuesto: lineImpuesto,
     });
   }
-  const impuestoPct = data.impuestoPct ?? 0;
-  const impuesto = Number((subtotal * (impuestoPct / 100)).toFixed(2));
+  const impuesto = Number(totalImpuesto.toFixed(2));
   const total = Number((subtotal + impuesto).toFixed(2));
 
   const numero = `F-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
@@ -141,6 +161,8 @@ router.post("/", async (req, res) => {
       cantidad: d.cantidad,
       precioUnitario: d.precioUnitario.toFixed(2),
       subtotal: d.subtotal.toFixed(2),
+      impuestoPct: d.impuestoPct.toFixed(2),
+      impuesto: d.impuesto.toFixed(2),
     });
 
     if (localId) {
@@ -247,6 +269,8 @@ router.get("/:id", async (req, res) => {
       cantidad: d.cantidad,
       precioUnitario: Number(d.precioUnitario),
       subtotal: Number(d.subtotal),
+      impuestoPct: Number(d.impuestoPct),
+      impuesto: Number(d.impuesto),
     })),
   });
 });

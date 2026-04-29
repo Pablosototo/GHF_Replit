@@ -17,7 +17,7 @@ export const pedidosTable = pgTable("pedidos", {
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
   impuesto: numeric("impuesto", { precision: 12, scale: 2 }).notNull().default("0"),
   total: numeric("total", { precision: 12, scale: 2 }).notNull().default("0"),
-  estado: text("estado").notNull().default("pendiente"), // pendiente|facturado|anulado
+  estado: text("estado").notNull().default("pendiente"), // pendiente|procesando|enviando|facturado|anulada
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
@@ -33,6 +33,8 @@ export const pedidoDetallesTable = pgTable("pedido_detalles", {
   cantidad: integer("cantidad").notNull(),
   precioUnitario: numeric("precio_unitario", { precision: 12, scale: 2 }).notNull(),
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
+  impuestoPct: numeric("impuesto_pct", { precision: 5, scale: 2 }).notNull().default("13"),
+  impuesto: numeric("impuesto", { precision: 12, scale: 2 }).notNull().default("0"),
 });
 
 export const pedidoEventosTable = pgTable("pedido_eventos", {

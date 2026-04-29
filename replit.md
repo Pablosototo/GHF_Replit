@@ -25,11 +25,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `sociedades` — entidades legales
 - `marcas` — marcas comerciales (Café Central, Pizza Express, etc.)
 - `locales` — sucursales (pertenecen a una sociedad y una marca)
-- `categorias` + `productos` (con sku, precio, costo, stock mínimo)
+- `categorias` + `productos` (con sku, precio, costo, stock mínimo, `impuesto_pct` por categoría)
+- `categoria_horarios` — disponibilidad por día y hora de cada categoría
+- `local_productos` — productos deshabilitados por local (habilitado=false)
 - `stock` por producto×local + `movimientos_stock` (entrada/salida/ajuste/venta)
-- `pedidos` con `pedido_detalles` (estado: pendiente/procesando/enviando/facturado/anulada)
+- `pedidos` con `pedido_detalles` (estado: pendiente/procesando/enviando/facturado/anulada, impuesto por línea según categoría)
 - `pedido_eventos` (historial de cambios de estado por pedido)
-- `facturas` con `factura_detalles` (numeradas F-YYYY-XXXXXX)
+- `facturas` con `factura_detalles` (numeradas F-YYYY-XXXXXX, impuesto por línea, desglose multi-tasa)
 - `users` con rol (admin | local) y opcional `localId` (los usuarios de local sólo ven datos de su local)
 
 ## Auth & roles

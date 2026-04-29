@@ -1,83 +1,51 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { 
-  useListProductos, 
-  useCreateProducto, 
-  useUpdateProducto, 
-  useDeleteProducto,
-  useListCategorias,
-  getListProductosQueryKey
+  useListProductos, useCreateProducto, useUpdateProducto, useDeleteProducto,
+  useListCategorias, getListProductosQueryKey
 } from "@workspace/api-client-react";
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
 import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  Loader2, 
-  Plus, 
-  Pencil, 
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  Search,
-  FilterX
+  Loader2, Plus, Pencil, Trash2, CheckCircle2, XCircle, Search, FilterX
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { formatCurrency } from "@/lib/utils";
+
+function toSentenceCase(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
 
 const productoSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   sku: z.string().optional().nullable(),
   categoriaId: z.coerce.number().optional().nullable(),
-  descripcion: z.string().optional().nullable(),
   precio: z.coerce.number().min(0, "El precio debe ser mayor o igual a 0"),
   precioEntrada: z.coerce.number().min(0).optional().default(0),
   presentacion: z.string().optional().nullable(),
-  stockMinimo: z.coerce.number().int().min(0, "El stock mínimo debe ser mayor o igual a 0").optional().default(0),
+  stockMinimo: z.coerce.number().int().min(0).optional().default(0),
   activo: z.boolean().default(true),
 });
 
@@ -86,9 +54,8 @@ type ProductoFormValues = z.infer<typeof productoSchema>;
 export default function Productos() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [location] = useLocation();
-  const searchParams = new URLSearchParams(window.location.search);
   
+  const searchParams = new URLSearchParams(window.location.search);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [categoriaFilter, setCategoriaFilter] = useState(searchParams.get("categoriaId") || "all");
   
@@ -96,7 +63,6 @@ export default function Productos() {
     search: searchTerm || undefined,
     categoriaId: categoriaFilter !== "all" ? Number(categoriaFilter) : undefined,
   });
-  
   const { data: categorias } = useListCategorias();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -106,15 +72,8 @@ export default function Productos() {
   const form = useForm<ProductoFormValues>({
     resolver: zodResolver(productoSchema),
     defaultValues: {
-      nombre: "",
-      sku: "",
-      categoriaId: null,
-      descripcion: "",
-      precio: 0,
-      precioEntrada: 0,
-      presentacion: "",
-      stockMinimo: 0,
-      activo: true,
+      nombre: "", sku: "", categoriaId: null,
+      precio: 0, precioEntrada: 0, presentacion: "", stockMinimo: 0, activo: true,
     },
   });
 
@@ -122,13 +81,11 @@ export default function Productos() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListProductosQueryKey() });
-        toast({ title: "Guardado", description: "El producto ha sido creado exitosamente." });
+        toast({ title: "Guardado", description: "Producto creado exitosamente." });
         setIsDialogOpen(false);
         form.reset();
       },
-      onError: (error: any) => {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-      },
+      onError: (error: any) => toast({ variant: "destructive", title: "Error", description: error.message }),
     },
   });
 
@@ -136,14 +93,12 @@ export default function Productos() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListProductosQueryKey() });
-        toast({ title: "Actualizado", description: "El producto ha sido actualizado exitosamente." });
+        toast({ title: "Actualizado", description: "Producto actualizado exitosamente." });
         setIsDialogOpen(false);
         setEditingProducto(null);
         form.reset();
       },
-      onError: (error: any) => {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-      },
+      onError: (error: any) => toast({ variant: "destructive", title: "Error", description: error.message }),
     },
   });
 
@@ -151,20 +106,18 @@ export default function Productos() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListProductosQueryKey() });
-        toast({ title: "Eliminado", description: "El producto ha sido eliminado." });
+        toast({ title: "Eliminado", description: "Producto eliminado." });
         setDeletingProducto(null);
       },
-      onError: (error: any) => {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-      },
+      onError: (error: any) => toast({ variant: "destructive", title: "Error", description: error.message }),
     },
   });
 
   const onSubmit = (values: ProductoFormValues) => {
     if (editingProducto) {
-      updateMutation.mutate({ id: editingProducto.id, data: values });
+      updateMutation.mutate({ id: editingProducto.id, data: values as any });
     } else {
-      createMutation.mutate({ data: values });
+      createMutation.mutate({ data: values as any });
     }
   };
 
@@ -174,7 +127,6 @@ export default function Productos() {
       nombre: producto.nombre,
       sku: producto.sku || "",
       categoriaId: producto.categoriaId || null,
-      descripcion: producto.descripcion || "",
       precio: producto.precio,
       precioEntrada: (producto as any).precioEntrada ?? 0,
       presentacion: (producto as any).presentacion || "",
@@ -187,15 +139,8 @@ export default function Productos() {
   const handleAdd = () => {
     setEditingProducto(null);
     form.reset({
-      nombre: "",
-      sku: "",
-      categoriaId: null,
-      descripcion: "",
-      precio: 0,
-      precioEntrada: 0,
-      presentacion: "",
-      stockMinimo: 0,
-      activo: true,
+      nombre: "", sku: "", categoriaId: null,
+      precio: 0, precioEntrada: 0, presentacion: "", stockMinimo: 0, activo: true,
     });
     setIsDialogOpen(true);
   };
@@ -218,7 +163,7 @@ export default function Productos() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Productos</h2>
-          <p className="text-muted-foreground">Catálogo completo de productos y servicios.</p>
+          <p className="text-muted-foreground">Catálogo completo de productos. El impuesto proviene de la categoría asignada.</p>
         </div>
         <Button onClick={handleAdd}>
           <Plus className="mr-2 h-4 w-4" /> Nuevo producto
@@ -228,12 +173,8 @@ export default function Productos() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Buscar por nombre o SKU..." 
-            className="pl-9" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <Input placeholder="Buscar por nombre o SKU..." className="pl-9" value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
         <div className="w-full sm:w-[200px]">
           <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
@@ -263,6 +204,7 @@ export default function Productos() {
               <TableHead>Nombre</TableHead>
               <TableHead>Presentación</TableHead>
               <TableHead>Categoría</TableHead>
+              <TableHead className="text-center">Impuesto</TableHead>
               <TableHead className="text-right">P. Entrada</TableHead>
               <TableHead className="text-right">P. Salida</TableHead>
               <TableHead className="text-center">Stock Mín.</TableHead>
@@ -274,22 +216,25 @@ export default function Productos() {
             {productos?.map((producto) => (
               <TableRow key={producto.id}>
                 <TableCell className="font-mono text-xs">{producto.sku || "-"}</TableCell>
-                <TableCell className="font-medium">{producto.nombre}</TableCell>
+                <TableCell className="font-medium">{toSentenceCase(producto.nombre)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{(producto as any).presentacion || "-"}</TableCell>
                 <TableCell>{producto.categoriaNombre || "-"}</TableCell>
+                <TableCell className="text-center">
+                  <Badge variant="outline" className="text-xs">
+                    {(producto as any).impuestoPct ?? 13}%
+                  </Badge>
+                </TableCell>
                 <TableCell className="text-right text-muted-foreground">{formatCurrency((producto as any).precioEntrada ?? 0)}</TableCell>
                 <TableCell className="text-right font-medium">{formatCurrency(producto.precio)}</TableCell>
                 <TableCell className="text-center">{producto.stockMinimo}</TableCell>
                 <TableCell className="text-center">
                   {producto.activo ? (
                     <div className="flex items-center justify-center text-green-600">
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      <span className="text-xs">Activo</span>
+                      <CheckCircle2 className="h-4 w-4 mr-1" /><span className="text-xs">Activo</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center text-muted-foreground">
-                      <XCircle className="h-4 w-4 mr-1" />
-                      <span className="text-xs">Inactivo</span>
+                      <XCircle className="h-4 w-4 mr-1" /><span className="text-xs">Inactivo</span>
                     </div>
                   )}
                 </TableCell>
@@ -307,9 +252,7 @@ export default function Productos() {
             ))}
             {productos?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
-                  No se encontraron productos.
-                </TableCell>
+                <TableCell colSpan={10} className="h-24 text-center">No se encontraron productos.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -324,148 +267,85 @@ export default function Productos() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="sku"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SKU / Código</FormLabel>
+                <FormField control={form.control} name="sku" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SKU / Código</FormLabel>
+                    <FormControl><Input placeholder="PROD-001" {...field} value={field.value || ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="categoriaId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(v === "null" ? null : Number(v))}
+                      value={field.value?.toString() || "null"}>
                       <FormControl>
-                        <Input placeholder="PROD-001" {...field} value={field.value || ""} />
+                        <SelectTrigger><SelectValue placeholder="Seleccione..." /></SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="categoriaId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categoría</FormLabel>
-                      <Select 
-                        onValueChange={(val) => field.onChange(val === "null" ? null : Number(val))} 
-                        value={field.value?.toString() || "null"}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccione..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="null">Ninguna</SelectItem>
-                          {categorias?.map((c) => (
-                            <SelectItem key={c.id} value={c.id.toString()}>{c.nombre}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        <SelectItem value="null">Ninguna</SelectItem>
+                        {categorias?.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.nombre} ({(c as any).impuestoPct ?? 13}%)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">El impuesto es el de la categoría seleccionada</p>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
-              <FormField
-                control={form.control}
-                name="nombre"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre del producto</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: Café Chorotega 500g" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="descripcion"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descripción</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Opcional..." {...field} value={field.value || ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="presentacion"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Presentación</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: TIRA x 100 UNI" {...field} value={field.value || ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="nombre" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nombre del producto</FormLabel>
+                  <FormControl><Input placeholder="Ej: Café chorotega 500g" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="presentacion" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Presentación</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: TIRA x 100 UNI" {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="precioEntrada"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>P. Entrada</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="precio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>P. Salida</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="stockMinimo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Stock Mín.</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="activo"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Disponible para venta</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
+                <FormField control={form.control} name="precioEntrada" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>P. Entrada</FormLabel>
+                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                    <FormMessage />
                   </FormItem>
-                )}
-              />
+                )} />
+                <FormField control={form.control} name="precio" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>P. Salida</FormLabel>
+                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="stockMinimo" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stock Mín.</FormLabel>
+                    <FormControl><Input type="number" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={form.control} name="activo" render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5"><FormLabel>Disponible para venta</FormLabel></div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )} />
               <DialogFooter>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {(createMutation.isPending || updateMutation.isPending) && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
+                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingProducto ? "Guardar cambios" : "Crear producto"}
                 </Button>
               </DialogFooter>
@@ -484,7 +364,7 @@ export default function Productos() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => deleteMutation.mutate({ id: deletingProducto.id })}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

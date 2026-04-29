@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListPedidos, 
@@ -64,7 +64,8 @@ import {
   Search,
   FilterX,
   Printer,
-  Copy
+  Copy,
+  Calendar
 } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -84,7 +85,6 @@ import { Card, CardContent } from "@/components/ui/card";
 const pedidoSchema = z.object({
   localId: z.coerce.number().optional().nullable(),
   observaciones: z.string().optional().nullable(),
-  impuestoPct: z.coerce.number().min(0, "El impuesto no puede ser negativo").default(13),
   detalles: z.array(z.object({
     productoId: z.coerce.number().min(1, "Seleccione un producto"),
     cantidad: z.coerce.number().min(1, "La cantidad debe ser mayor a 0"),
@@ -102,6 +102,8 @@ export default function Pedidos() {
   
   const [estadoFilter, setEstadoFilter] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -111,26 +113,29 @@ export default function Pedidos() {
   const { data: pedidos, isLoading } = useListPedidos({
     estado: estadoFilter === "todos" ? undefined : estadoFilter,
     localId: isAdmin ? undefined : me?.localId || undefined,
-  });
+  } as any, { query: { refetchInterval: 10_000 } } as any);
   
   const { data: detailPedido, isLoading: isDetailLoading } = useGetPedido(selectedPedidoId || 0);
 
   const { data: productos } = useListProductos();
   const { data: locales } = useListLocales();
 
-  const filteredPedidos = pedidos?.filter(p => {
+  const filteredPedidos = (pedidos ?? []).filter(p => {
     const term = searchTerm.toLowerCase();
-    return !term ||
+    const matchText = !term ||
       (p.localNombre || "").toLowerCase().includes(term) ||
       p.id.toString().includes(term);
-  }) ?? [];
+    const pDate = new Date((p as any).createdAt);
+    const matchFechaI = !fechaInicio || pDate >= new Date(fechaInicio);
+    const matchFechaF = !fechaFin || pDate <= new Date(fechaFin + "T23:59:59");
+    return matchText && matchFechaI && matchFechaF;
+  });
 
   const form = useForm<PedidoFormValues>({
     resolver: zodResolver(pedidoSchema),
     defaultValues: {
       localId: me?.localId || null,
       observaciones: "",
-      impuestoPct: 13,
       detalles: [{ productoId: 0, cantidad: 1 }],
     },
   });
@@ -202,7 +207,6 @@ export default function Pedidos() {
       form.reset({
         localId: isAdmin ? (pedido.localId ?? me?.localId ?? null) : (me?.localId ?? null),
         observaciones: "",
-        impuestoPct: pedido.impuestoPct ?? 13,
         detalles: detalles.length > 0 ? detalles : [{ productoId: 0, cantidad: 1 }],
       });
       setRepeatSourceId(pedidoId);
@@ -341,18 +345,24 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
         </TabsList>
       </Tabs>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por ID o local..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <Input placeholder="Buscar por ID o local..." className="pl-9"
+            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        {searchTerm && (
-          <Button variant="ghost" onClick={() => setSearchTerm("")}>
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input type="date" className="pl-9" value={fechaInicio}
+            onChange={e => setFechaInicio(e.target.value)} placeholder="Desde" />
+        </div>
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input type="date" className="pl-9" value={fechaFin}
+            onChange={e => setFechaFin(e.target.value)} placeholder="Hasta" />
+        </div>
+        {(searchTerm || fechaInicio || fechaFin) && (
+          <Button variant="ghost" onClick={() => { setSearchTerm(""); setFechaInicio(""); setFechaFin(""); }}>
             <FilterX className="mr-2 h-4 w-4" /> Limpiar
           </Button>
         )}
@@ -439,7 +449,7 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
 
       <Dialog open={isNewDialogOpen} onOpenChange={(open) => {
         setIsNewDialogOpen(open);
-        if (!open) { setRepeatSourceId(null); form.reset({ localId: me?.localId || null, observaciones: "", impuestoPct: 13, detalles: [{ productoId: 0, cantidad: 1 }] }); }
+        if (!open) { setRepeatSourceId(null); form.reset({ localId: me?.localId || null, observaciones: "", detalles: [{ productoId: 0, cantidad: 1 }] }); }
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -487,19 +497,6 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
                     )}
                   />
                 )}
-                <FormField
-                  control={form.control}
-                  name="impuestoPct"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Impuesto (%)</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="observaciones"

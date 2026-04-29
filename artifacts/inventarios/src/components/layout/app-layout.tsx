@@ -18,6 +18,7 @@ import {
   Utensils,
   FilePlus2,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { useGetMe, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ const ADMIN_NAV: NavSection[] = [
       { name: "Pedidos", href: "/pedidos", icon: ShoppingCart },
       { name: "Facturas", href: "/facturas", icon: Receipt },
       { name: "Nueva factura", href: "/facturas/nueva", icon: FilePlus2 },
+      { name: "Unidades pedidas", href: "/unidades-pedidas", icon: BarChart3 },
       { name: "Stock", href: "/stock", icon: Boxes },
       { name: "Movimientos", href: "/stock/movimientos", icon: History },
     ],
