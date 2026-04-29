@@ -79,15 +79,12 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const pedidoSchema = z.object({
   localId: z.coerce.number().optional().nullable(),
-  clienteNombre: z.string().min(1, "El nombre del cliente es requerido"),
-  clienteTelefono: z.string().optional().nullable(),
-  clienteEmail: z.string().email("Correo inválido").optional().nullable().or(z.literal("")),
   observaciones: z.string().optional().nullable(),
   impuestoPct: z.coerce.number().min(0, "El impuesto no puede ser negativo").default(13),
   detalles: z.array(z.object({
     productoId: z.coerce.number().min(1, "Seleccione un producto"),
-    cantidad: z.coerce.number().min(0.01, "La cantidad debe ser mayor a 0"),
-    precioUnitario: z.coerce.number().min(0, "El precio no puede ser negativo"),
+    cantidad: z.coerce.number().min(1, "La cantidad debe ser mayor a 0"),
+    precioUnitario: z.coerce.number().min(0, "El precio no puede ser negativo").optional(),
   })).min(1, "Debe agregar al menos un producto"),
 });
 
@@ -119,12 +116,9 @@ export default function Pedidos() {
     resolver: zodResolver(pedidoSchema),
     defaultValues: {
       localId: me?.localId || null,
-      clienteNombre: "",
-      clienteTelefono: "",
-      clienteEmail: "",
       observaciones: "",
       impuestoPct: 13,
-      detalles: [{ productoId: 0, cantidad: 1, precioUnitario: 0 }],
+      detalles: [{ productoId: 0, cantidad: 1 }],
     },
   });
 
@@ -176,13 +170,6 @@ export default function Pedidos() {
     createMutation.mutate({ data: values });
   };
 
-  const watchDetalles = form.watch("detalles");
-  const watchImpuestoPct = form.watch("impuestoPct");
-
-  const subtotal = watchDetalles.reduce((acc, curr) => acc + (curr.cantidad * curr.precioUnitario), 0);
-  const impuesto = subtotal * (watchImpuestoPct / 100);
-  const total = subtotal + impuesto;
-
   const handleOpenDetail = (id: number) => {
     setSelectedPedidoId(id);
     setIsDetailOpen(true);
@@ -225,8 +212,7 @@ export default function Pedidos() {
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Fecha</TableHead>
-              <TableHead>Cliente</TableHead>
-              {isAdmin && <TableHead>Local</TableHead>}
+              <TableHead>Local</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-center">Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -237,8 +223,7 @@ export default function Pedidos() {
               <TableRow key={pedido.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleOpenDetail(pedido.id)}>
                 <TableCell className="font-mono text-xs">#{pedido.id}</TableCell>
                 <TableCell className="text-xs">{formatDateTime(pedido.createdAt)}</TableCell>
-                <TableCell className="font-medium">{pedido.clienteNombre}</TableCell>
-                {isAdmin && <TableCell>{pedido.localNombre}</TableCell>}
+                <TableCell className="font-medium">{pedido.localNombre ?? "—"}</TableCell>
                 <TableCell className="text-right font-bold">{formatCurrency(pedido.total)}</TableCell>
                 <TableCell className="text-center">
                   <Badge variant="outline" className={cn(
@@ -282,7 +267,7 @@ export default function Pedidos() {
             ))}
             {pedidos?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
                     <ShoppingCart className="h-8 w-8 text-muted-foreground/30" />
                     <span>No hay pedidos registrados.</span>
@@ -301,108 +286,60 @@ export default function Pedidos() {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Información del Cliente</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {isAdmin && (
                   <FormField
                     control={form.control}
-                    name="clienteNombre"
+                    name="localId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nombre completo</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ej: Juan Pérez" {...field} />
-                        </FormControl>
+                        <FormLabel>Local solicitante</FormLabel>
+                        <Select
+                          onValueChange={(val) => field.onChange(val === "null" ? null : Number(val))}
+                          value={field.value?.toString() || "null"}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccione local..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {locales?.map((l) => (
+                              <SelectItem key={l.id} value={l.id.toString()}>{l.nombre}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="clienteTelefono"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Teléfono</FormLabel>
-                          <FormControl>
-                            <Input placeholder="8888-8888" {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="clienteEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Correo electrónico</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="cliente@ejemplo.com" {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="observaciones"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Observaciones</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Notas adicionales..." {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Configuración</h3>
-                  {isAdmin && (
-                    <FormField
-                      control={form.control}
-                      name="localId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Local</FormLabel>
-                          <Select 
-                            onValueChange={(val) => field.onChange(val === "null" ? null : Number(val))} 
-                            value={field.value?.toString() || "null"}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccione local..." />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {locales?.map((l) => (
-                                <SelectItem key={l.id} value={l.id.toString()}>{l.nombre}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                )}
+                <FormField
+                  control={form.control}
+                  name="impuestoPct"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Impuesto (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  <FormField
-                    control={form.control}
-                    name="impuestoPct"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Impuesto (%)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                />
+                <FormField
+                  control={form.control}
+                  name="observaciones"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-3">
+                      <FormLabel>Observaciones</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Notas adicionales..." rows={2} {...field} value={field.value || ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <Separator />
@@ -410,7 +347,7 @@ export default function Pedidos() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Detalle de Productos</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={() => append({ productoId: 0, cantidad: 1, precioUnitario: 0 })}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => append({ productoId: 0, cantidad: 1 })}>
                     <Plus className="h-4 w-4 mr-1" /> Agregar línea
                   </Button>
                 </div>
@@ -425,15 +362,8 @@ export default function Pedidos() {
                           render={({ field: productField }) => (
                             <FormItem>
                               <FormLabel className={index === 0 ? "" : "sr-only"}>Producto</FormLabel>
-                              <Select 
-                                onValueChange={(val) => {
-                                  const prodId = Number(val);
-                                  productField.onChange(prodId);
-                                  const product = productos?.find(p => p.id === prodId);
-                                  if (product) {
-                                    form.setValue(`detalles.${index}.precioUnitario`, product.precio);
-                                  }
-                                }} 
+                              <Select
+                                onValueChange={(val) => productField.onChange(Number(val))}
                                 value={productField.value?.toString()}
                               >
                                 <FormControl>
@@ -443,7 +373,9 @@ export default function Pedidos() {
                                 </FormControl>
                                 <SelectContent>
                                   {productos?.filter(p => p.activo).map((p) => (
-                                    <SelectItem key={p.id} value={p.id.toString()}>{p.nombre}</SelectItem>
+                                    <SelectItem key={p.id} value={p.id.toString()}>
+                                      {p.nombre}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -452,7 +384,7 @@ export default function Pedidos() {
                           )}
                         />
                       </div>
-                      <div className="w-24">
+                      <div className="w-28">
                         <FormField
                           control={form.control}
                           name={`detalles.${index}.cantidad`}
@@ -460,37 +392,18 @@ export default function Pedidos() {
                             <FormItem>
                               <FormLabel className={index === 0 ? "" : "sr-only"}>Cant.</FormLabel>
                               <FormControl>
-                                <Input type="number" step="0.01" {...field} />
+                                <Input type="number" min={1} step={1} {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
-                      <div className="w-32">
-                        <FormField
-                          control={form.control}
-                          name={`detalles.${index}.precioUnitario`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={index === 0 ? "" : "sr-only"}>Precio Unit.</FormLabel>
-                              <FormControl>
-                                <Input type="number" step="0.01" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="w-32 pb-3 text-right">
-                        <span className="text-xs text-muted-foreground block mb-1">Subtotal</span>
-                        <span className="font-medium">{formatCurrency((form.watch(`detalles.${index}.cantidad`) || 0) * (form.watch(`detalles.${index}.precioUnitario`) || 0))}</span>
-                      </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive mb-1" 
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive mb-1"
                         onClick={() => remove(index)}
                         disabled={fields.length === 1}
                       >
@@ -499,26 +412,6 @@ export default function Pedidos() {
                     </div>
                   ))}
                 </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Card className="w-full md:w-80">
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatCurrency(subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Impuesto ({watchImpuestoPct}%)</span>
-                      <span>{formatCurrency(impuesto)}</span>
-                    </div>
-                    <Separator className="my-2" />
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>Total</span>
-                      <span>{formatCurrency(total)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
 
               <DialogFooter>
@@ -560,15 +453,13 @@ export default function Pedidos() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cliente</p>
-                  <p className="font-medium text-lg">{detailPedido.clienteNombre}</p>
-                  <p className="text-sm">{detailPedido.clienteTelefono || "Sin teléfono"}</p>
-                  <p className="text-sm">{detailPedido.clienteEmail || "Sin correo"}</p>
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Local solicitante</p>
+                  <p className="font-medium text-lg">{detailPedido.localNombre ?? "—"}</p>
+                  <p className="text-sm text-muted-foreground">Pedido #{detailPedido.id}</p>
                 </div>
                 <div className="space-y-1 text-right">
-                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Detalles</p>
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información</p>
                   <p className="text-sm"><span className="font-medium">Fecha:</span> {formatDateTime(detailPedido.createdAt)}</p>
-                  <p className="text-sm"><span className="font-medium">Local:</span> {detailPedido.localNombre}</p>
                   {detailPedido.observaciones && (
                     <p className="text-sm mt-2 italic text-muted-foreground">"{detailPedido.observaciones}"</p>
                   )}

@@ -379,16 +379,20 @@ export default function Catalogo({ mode = "pedido" }: CatalogoProps) {
 
       <div className="space-y-3 border-t bg-muted/30 p-4">
         <div className="space-y-2">
-          <Input
-            placeholder="Nombre del cliente (opcional)"
-            value={clienteNombre}
-            onChange={(e) => setClienteNombre(e.target.value)}
-          />
-          <Input
-            placeholder="Teléfono (opcional)"
-            value={clienteTelefono}
-            onChange={(e) => setClienteTelefono(e.target.value)}
-          />
+          {isFactura && (
+            <>
+              <Input
+                placeholder="Nombre del cliente (opcional)"
+                value={clienteNombre}
+                onChange={(e) => setClienteNombre(e.target.value)}
+              />
+              <Input
+                placeholder="Teléfono (opcional)"
+                value={clienteTelefono}
+                onChange={(e) => setClienteTelefono(e.target.value)}
+              />
+            </>
+          )}
           <Textarea
             placeholder="Observaciones"
             rows={2}
