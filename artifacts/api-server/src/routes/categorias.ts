@@ -30,12 +30,13 @@ router.post("/", async (req, res) => {
     res.status(400).json({ message: "Datos inválidos" });
     return;
   }
+  const impuestoPct = req.body.impuestoPct != null ? Number(req.body.impuestoPct) : 13;
   const [row] = await db
     .insert(categoriasTable)
     .values({
       nombre: parsed.data.nombre,
       descripcion: parsed.data.descripcion ?? null,
-      impuestoPct: String((parsed.data as any).impuestoPct ?? 13),
+      impuestoPct: String(impuestoPct),
       activo: parsed.data.activo ?? true,
     })
     .returning();
@@ -49,12 +50,13 @@ router.put("/:id", async (req, res) => {
     res.status(400).json({ message: "Datos inválidos" });
     return;
   }
+  const impuestoPct = req.body.impuestoPct != null ? Number(req.body.impuestoPct) : 13;
   const [row] = await db
     .update(categoriasTable)
     .set({
       nombre: parsed.data.nombre,
       descripcion: parsed.data.descripcion ?? null,
-      impuestoPct: String((parsed.data as any).impuestoPct ?? 13),
+      impuestoPct: String(impuestoPct),
       activo: parsed.data.activo ?? true,
     })
     .where(eq(categoriasTable.id, id))

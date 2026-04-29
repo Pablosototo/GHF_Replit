@@ -49,6 +49,20 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { ChevronsUpDown, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -81,6 +95,67 @@ import {
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+
+function ProductoCombobox({
+  value,
+  onChange,
+  productos,
+}: {
+  value: number | string;
+  onChange: (val: number) => void;
+  productos: Array<{ id: number; nombre: string; categoriaNombre?: string | null }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = productos.find(p => p.id === Number(value));
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal h-10 text-left"
+        >
+          <span className="truncate">
+            {selected ? selected.nombre : "Seleccione producto..."}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar producto..." />
+          <CommandList>
+            <CommandEmpty>No se encontraron productos.</CommandEmpty>
+            <CommandGroup>
+              {productos.map(p => (
+                <CommandItem
+                  key={p.id}
+                  value={`${p.nombre} ${p.categoriaNombre ?? ""}`}
+                  onSelect={() => {
+                    onChange(p.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn("mr-2 h-4 w-4", Number(value) === p.id ? "opacity-100" : "opacity-0")}
+                  />
+                  <div className="flex-1 truncate">
+                    <span className="font-medium">{p.nombre}</span>
+                    {p.categoriaNombre && (
+                      <span className="ml-2 text-xs text-muted-foreground">({p.categoriaNombre})</span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const pedidoSchema = z.object({
   localId: z.coerce.number().optional().nullable(),
@@ -532,23 +607,13 @@ ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</d
                           render={({ field: productField }) => (
                             <FormItem>
                               <FormLabel className={index === 0 ? "" : "sr-only"}>Producto</FormLabel>
-                              <Select
-                                onValueChange={(val) => productField.onChange(Number(val))}
-                                value={productField.value?.toString()}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Producto..." />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {productos?.filter(p => p.activo).map((p) => (
-                                    <SelectItem key={p.id} value={p.id.toString()}>
-                                      {p.nombre}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <ProductoCombobox
+                                  value={productField.value}
+                                  onChange={productField.onChange}
+                                  productos={(productos ?? []).filter(p => p.activo)}
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
