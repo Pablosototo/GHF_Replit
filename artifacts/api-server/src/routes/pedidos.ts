@@ -45,9 +45,49 @@ async function buildPedidoDto(pedido: typeof pedidosTable.$inferSelect) {
       subtotal: pedidoDetallesTable.subtotal,
       impuestoPct: pedidoDetallesTable.impuestoPct,
       impuesto: pedidoDetallesTable.impuesto,
+      categoriaImpuestoPct: categoriasTable.impuestoPct,
     })
     .from(pedidoDetallesTable)
+    .leftJoin(productosTable, eq(productosTable.id, pedidoDetallesTable.productoId))
+    .leftJoin(categoriasTable, eq(categoriasTable.id, productosTable.categoriaId))
     .where(eq(pedidoDetallesTable.pedidoId, pedido.id));
+
+  // Recalculate totals in case stored values are stale/zero (legacy records)
+  let recalcSubtotal = 0;
+  let recalcImpuesto = 0;
+
+  const enrichedDetalles = detalles.map((d) => {
+    const lineSubtotal = Number(d.subtotal);
+    const storedPct = Number(d.impuestoPct);
+    const storedImp = Number(d.impuesto);
+    // Use stored rate if valid, else fall back to current category rate, else 13
+    const effectivePct = storedPct > 0
+      ? storedPct
+      : (d.categoriaImpuestoPct != null ? Number(d.categoriaImpuestoPct) : 13);
+    // Use stored impuesto if valid, else derive from subtotal * rate
+    const effectiveImp = storedImp > 0
+      ? storedImp
+      : Number((lineSubtotal * effectivePct / 100).toFixed(2));
+    recalcSubtotal += lineSubtotal;
+    recalcImpuesto += effectiveImp;
+    return {
+      id: d.id,
+      productoId: d.productoId ?? 0,
+      productoNombre: d.productoNombre,
+      cantidad: d.cantidad,
+      precioUnitario: Number(d.precioUnitario),
+      subtotal: lineSubtotal,
+      impuestoPct: effectivePct,
+      impuesto: Number(effectiveImp.toFixed(2)),
+    };
+  });
+
+  // Use stored pedido totals if valid, else use recalculated
+  const storedImpuesto = Number(pedido.impuesto);
+  const storedTotal = Number(pedido.total);
+  const finalSubtotal = Number(pedido.subtotal) || recalcSubtotal;
+  const finalImpuesto = storedImpuesto > 0 ? storedImpuesto : Number(recalcImpuesto.toFixed(2));
+  const finalTotal = storedTotal > 0 ? storedTotal : Number((recalcSubtotal + recalcImpuesto).toFixed(2));
 
   return {
     id: pedido.id,
@@ -57,21 +97,12 @@ async function buildPedidoDto(pedido: typeof pedidosTable.$inferSelect) {
     clienteTelefono: pedido.clienteTelefono,
     clienteEmail: pedido.clienteEmail,
     observaciones: pedido.observaciones,
-    subtotal: Number(pedido.subtotal),
-    impuesto: Number(pedido.impuesto),
-    total: Number(pedido.total),
+    subtotal: finalSubtotal,
+    impuesto: finalImpuesto,
+    total: finalTotal,
     estado: pedido.estado,
     createdAt: pedido.createdAt.toISOString(),
-    detalles: detalles.map((d) => ({
-      id: d.id,
-      productoId: d.productoId ?? 0,
-      productoNombre: d.productoNombre,
-      cantidad: d.cantidad,
-      precioUnitario: Number(d.precioUnitario),
-      subtotal: Number(d.subtotal),
-      impuestoPct: Number(d.impuestoPct),
-      impuesto: Number(d.impuesto),
-    })),
+    detalles: enrichedDetalles,
   };
 }
 
