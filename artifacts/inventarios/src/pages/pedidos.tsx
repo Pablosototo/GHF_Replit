@@ -244,7 +244,7 @@ th.c{text-align:center}
 @media print{body{padding:12px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="company">GHF Holding</div><div class="company-sub">Inventarios y Pedidos</div></div>
+  <div><div class="company">GHF Inventarios y Facturación</div></div>
   <div>
     <div class="doc-title">PEDIDO</div>
     <div class="doc-num">#${String(pedido.id).padStart(6,"0")}</div>
@@ -265,7 +265,7 @@ th.c{text-align:center}
   <div class="trow final"><span>Total</span><span>${fmtCurrencyPrint(pedido.total)}</span></div>
 </div></div>
 ${pedido.observaciones ? `<div class="obs"><div class="obs-lbl">Observaciones</div>${pedido.observaciones}</div>` : ""}
-<div class="footer">Generado el ${fmtDatePrint(new Date().toISOString())} &mdash; GHF Inventarios</div>
+<div class="footer">Generado el ${fmtDatePrint(new Date().toISOString())} &mdash; GHF Inventarios y Facturación</div>
 </body></html>`);
     win.document.close();
     win.focus();

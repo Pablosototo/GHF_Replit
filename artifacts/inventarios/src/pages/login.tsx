@@ -100,7 +100,7 @@ export default function Login() {
     <div className="hidden lg:flex flex-col justify-between w-1/2 bg-sidebar p-12 text-sidebar-foreground">
       <div className="flex items-center gap-3 font-bold text-2xl tracking-tight">
         <Boxes className="h-8 w-8 text-primary" />
-        GHF Holding
+        GHF Inventarios y Facturación
       </div>
       <div className="space-y-6">
         <h1 className="text-4xl font-bold tracking-tight text-sidebar-primary-foreground">
