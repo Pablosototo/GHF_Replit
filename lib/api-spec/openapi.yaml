@@ -847,7 +847,6 @@ components:
       properties:
         id: { type: integer }
         nombre: { type: string }
-        slug: { type: string, nullable: true }
         activo: { type: boolean }
         localesCount: { type: integer }
       required: [id, nombre, activo, localesCount]
@@ -856,7 +855,6 @@ components:
       type: object
       properties:
         nombre: { type: string }
-        slug: { type: string, nullable: true }
         activo: { type: boolean }
       required: [nombre]
 

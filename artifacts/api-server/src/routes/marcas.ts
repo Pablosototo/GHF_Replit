@@ -12,7 +12,6 @@ router.get("/", async (_req, res) => {
     .select({
       id: marcasTable.id,
       nombre: marcasTable.nombre,
-      slug: marcasTable.slug,
       activo: marcasTable.activo,
       localesCount: sql<number>`count(${localesTable.id})::int`.as("locales_count"),
     })
@@ -43,7 +42,6 @@ router.post("/", async (req, res) => {
     .insert(marcasTable)
     .values({
       nombre: parsed.data.nombre,
-      slug: parsed.data.slug ?? null,
       activo: parsed.data.activo ?? true,
     })
     .returning();
@@ -61,7 +59,6 @@ router.put("/:id", async (req, res) => {
     .update(marcasTable)
     .set({
       nombre: parsed.data.nombre,
-      slug: parsed.data.slug ?? null,
       activo: parsed.data.activo ?? true,
     })
     .where(eq(marcasTable.id, id))

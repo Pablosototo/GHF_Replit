@@ -55,14 +55,12 @@ export interface SociedadInput {
 export interface Marca {
   id: number;
   nombre: string;
-  slug?: string | null;
   activo: boolean;
   localesCount: number;
 }
 
 export interface MarcaInput {
   nombre: string;
-  slug?: string | null;
   activo?: boolean;
 }
 

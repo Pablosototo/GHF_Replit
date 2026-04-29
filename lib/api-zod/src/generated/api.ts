@@ -230,7 +230,6 @@ export const DeleteSociedadResponse = zod.object({
 export const ListMarcasResponseItem = zod.object({
   id: zod.number(),
   nombre: zod.string(),
-  slug: zod.string().nullish(),
   activo: zod.boolean(),
   localesCount: zod.number(),
 });
@@ -238,7 +237,6 @@ export const ListMarcasResponse = zod.array(ListMarcasResponseItem);
 
 export const CreateMarcaBody = zod.object({
   nombre: zod.string(),
-  slug: zod.string().nullish(),
   activo: zod.boolean().optional(),
 });
 
@@ -249,7 +247,6 @@ export const GetMarcaParams = zod.object({
 export const GetMarcaResponse = zod.object({
   id: zod.number(),
   nombre: zod.string(),
-  slug: zod.string().nullish(),
   activo: zod.boolean(),
   localesCount: zod.number(),
 });
@@ -260,14 +257,12 @@ export const UpdateMarcaParams = zod.object({
 
 export const UpdateMarcaBody = zod.object({
   nombre: zod.string(),
-  slug: zod.string().nullish(),
   activo: zod.boolean().optional(),
 });
 
 export const UpdateMarcaResponse = zod.object({
   id: zod.number(),
   nombre: zod.string(),
-  slug: zod.string().nullish(),
   activo: zod.boolean(),
   localesCount: zod.number(),
 });

@@ -8,6 +8,5 @@
 
 export interface MarcaInput {
   nombre: string;
-  slug?: string | null;
   activo?: boolean;
 }

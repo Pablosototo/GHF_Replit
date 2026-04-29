@@ -9,7 +9,6 @@
 export interface Marca {
   id: number;
   nombre: string;
-  slug?: string | null;
   activo: boolean;
   localesCount: number;
 }
