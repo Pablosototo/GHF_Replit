@@ -1018,7 +1018,7 @@ function PedidoEstadoControl({
 }
 
 function PedidoEventos({ pedidoId }: { pedidoId: number }) {
-  const { data: eventos, isLoading } = useListPedidoEventos(pedidoId);
+  const { data: eventos, isLoading } = useListPedidoEventos(pedidoId, { query: { refetchInterval: 5_000 } });
 
   return (
     <div className="space-y-2 rounded-md border p-3">
