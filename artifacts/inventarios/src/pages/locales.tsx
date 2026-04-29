@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListLocales, useCreateLocal, useUpdateLocal, useDeleteLocal,
-  useListMarcas, useListSociedades, getListLocalesQueryKey, useListProductos
+  useListMarcas, useListSociedades, getListLocalesQueryKey, useListProductos,
+  useListCategorias,
 } from "@workspace/api-client-react";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
@@ -34,6 +35,13 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 
+const DIAS_CORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function fmtRango(diaInicio: number, horaInicio: string, diaFin: number, horaFin: string) {
+  if (diaInicio === diaFin) return `${DIAS_CORTO[diaInicio]} ${horaInicio} – ${horaFin}`;
+  return `${DIAS_CORTO[diaInicio]} ${horaInicio} → ${DIAS_CORTO[diaFin]} ${horaFin}`;
+}
+
 const localSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   codigo: z.string().optional().nullable(),
@@ -46,26 +54,72 @@ const localSchema = z.object({
 });
 type LocalFormValues = z.infer<typeof localSchema>;
 
+interface ScheduleGroup {
+  key: string;
+  label: string;
+  diaInicio: number;
+  horaInicio: string;
+  diaFin: number;
+  horaFin: string;
+  disponibleAhora: boolean;
+  categorias: { id: number; nombre: string }[];
+  categoriaIds: Set<number>;
+}
+
 function ProductosLocalPanel({ localId }: { localId: number }) {
   const { toast } = useToast();
   const { data: productos } = useListProductos({ activo: true } as any);
+  const { data: categorias } = useListCategorias();
   const [disabledIds, setDisabledIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedScheduleKey, setSelectedScheduleKey] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/locales/${localId}/productos`)
       .then(r => r.json())
       .then((data: { productoId: number; habilitado: boolean }[]) => {
-        const disabled = data
-          .filter(p => !p.habilitado)
-          .map(p => p.productoId);
+        const disabled = data.filter(p => !p.habilitado).map(p => p.productoId);
         setDisabledIds(new Set(disabled));
       })
       .finally(() => setLoading(false));
   }, [localId]);
+
+  // Build schedule groups from categories with horarios
+  const scheduleGroups: ScheduleGroup[] = (() => {
+    const map = new Map<string, ScheduleGroup>();
+    for (const cat of categorias ?? []) {
+      const activeHorarios = (cat.horarios ?? []).filter(h => h.activo);
+      for (const h of activeHorarios) {
+        const key = `${h.diaInicio}-${h.horaInicio}-${h.diaFin}-${h.horaFin}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            label: fmtRango(h.diaInicio, h.horaInicio, h.diaFin, h.horaFin),
+            diaInicio: h.diaInicio,
+            horaInicio: h.horaInicio,
+            diaFin: h.diaFin,
+            horaFin: h.horaFin,
+            disponibleAhora: cat.disponibleAhora ?? true,
+            categorias: [],
+            categoriaIds: new Set(),
+          });
+        }
+        const g = map.get(key)!;
+        if (!g.categoriaIds.has(cat.id)) {
+          g.categorias.push({ id: cat.id, nombre: cat.nombre });
+          g.categoriaIds.add(cat.id);
+          // If any category in this group is available now, mark the group as available
+          if (cat.disponibleAhora) g.disponibleAhora = true;
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.diaInicio !== b.diaInicio ? a.diaInicio - b.diaInicio : a.horaInicio.localeCompare(b.horaInicio)
+    );
+  })();
 
   const toggle = (id: number, enabled: boolean) => {
     setDisabledIds(prev => {
@@ -101,17 +155,75 @@ function ProductosLocalPanel({ localId }: { localId: number }) {
     }
   };
 
-  const filteredProductos = (productos ?? []).filter(p =>
-    !searchTerm || p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.categoriaNombre || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const selectedGroup = scheduleGroups.find(g => g.key === selectedScheduleKey);
 
-  const allEnabled = disabledIds.size === 0;
+  const filteredProductos = (productos ?? []).filter(p => {
+    const matchesSearch = !searchTerm ||
+      p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.categoriaNombre || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSchedule = !selectedGroup || selectedGroup.categoriaIds.has(p.categoriaId ?? -1);
+    return matchesSearch && matchesSchedule;
+  });
 
   return (
     <div className="space-y-4">
+
+      {/* Schedule groups panel */}
+      {scheduleGroups.length > 0 && (
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Horarios de disponibilidad
+            </p>
+            {selectedScheduleKey && (
+              <button
+                onClick={() => setSelectedScheduleKey(null)}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+              >
+                Ver todos
+              </button>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {scheduleGroups.map(g => {
+              const isSelected = selectedScheduleKey === g.key;
+              return (
+                <button
+                  key={g.key}
+                  onClick={() => setSelectedScheduleKey(isSelected ? null : g.key)}
+                  className={[
+                    "w-full text-left flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                    isSelected
+                      ? "bg-primary/10 border border-primary/30"
+                      : "hover:bg-muted/50 border border-transparent",
+                  ].join(" ")}
+                >
+                  <span
+                    className={["h-2.5 w-2.5 rounded-full shrink-0 mt-0.5",
+                      g.disponibleAhora ? "bg-green-500" : "bg-red-400"].join(" ")}
+                  />
+                  <span className="font-medium text-sm min-w-[11rem]">{g.label}</span>
+                  <span className="flex flex-wrap gap-1">
+                    {g.categorias.map(c => (
+                      <Badge key={c.id} variant="outline" className="text-xs h-5 px-1.5">
+                        {c.nombre}
+                      </Badge>
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <p className="text-sm text-muted-foreground">
-        Marque los productos disponibles para pedir desde este local. Por defecto todos están habilitados.
+        Marque los productos disponibles para pedir desde este local.
+        {selectedGroup && (
+          <span className="ml-1 text-primary font-medium">
+            Filtrando por: {selectedGroup.label}
+          </span>
+        )}
       </p>
 
       <div className="flex gap-3 items-center">
@@ -127,7 +239,7 @@ function ProductosLocalPanel({ localId }: { localId: number }) {
       {loading ? (
         <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : (
-        <div className="max-h-80 overflow-y-auto space-y-1 rounded-md border p-2">
+        <div className="max-h-64 overflow-y-auto space-y-1 rounded-md border p-2">
           {filteredProductos.map(p => {
             const enabled = !disabledIds.has(p.id);
             return (
