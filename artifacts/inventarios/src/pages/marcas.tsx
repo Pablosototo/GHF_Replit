@@ -58,7 +58,6 @@ import {
 
 const marcaSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
-  slug: z.string().optional().nullable(),
   activo: z.boolean().default(true),
 });
 
@@ -77,7 +76,6 @@ export default function Marcas() {
     resolver: zodResolver(marcaSchema),
     defaultValues: {
       nombre: "",
-      slug: "",
       activo: true,
     },
   });
@@ -136,7 +134,6 @@ export default function Marcas() {
     setEditingMarca(marca);
     form.reset({
       nombre: marca.nombre,
-      slug: marca.slug || "",
       activo: marca.activo,
     });
     setIsDialogOpen(true);
@@ -146,7 +143,6 @@ export default function Marcas() {
     setEditingMarca(null);
     form.reset({
       nombre: "",
-      slug: "",
       activo: true,
     });
     setIsDialogOpen(true);
@@ -177,7 +173,6 @@ export default function Marcas() {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
-              <TableHead>Slug</TableHead>
               <TableHead className="text-center"># Locales</TableHead>
               <TableHead className="text-center">Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -187,7 +182,6 @@ export default function Marcas() {
             {marcas?.map((marca) => (
               <TableRow key={marca.id}>
                 <TableCell className="font-medium">{marca.nombre}</TableCell>
-                <TableCell>{marca.slug || "-"}</TableCell>
                 <TableCell className="text-center">{marca.localesCount}</TableCell>
                 <TableCell className="text-center">
                   {marca.activo ? (
@@ -216,7 +210,7 @@ export default function Marcas() {
             ))}
             {marcas?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   No hay marcas registradas.
                 </TableCell>
               </TableRow>
@@ -240,19 +234,6 @@ export default function Marcas() {
                     <FormLabel>Nombre</FormLabel>
                     <FormControl>
                       <Input placeholder="Ej: Marca Premium" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="slug"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Slug (identificador)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ej-marca-premium" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
