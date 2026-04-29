@@ -19,6 +19,7 @@ import Movimientos from "@/pages/movimientos";
 import Pedidos from "@/pages/pedidos";
 import Facturas from "@/pages/facturas";
 import Catalogo from "@/pages/catalogo";
+import Configuracion from "@/pages/configuracion";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +55,7 @@ function Router() {
             <Route path="/catalogo">
               {() => <Catalogo mode="pedido" />}
             </Route>
+            <Route path="/configuracion" component={Configuracion} />
             <Route component={NotFound} />
           </Switch>
         </AppLayout>

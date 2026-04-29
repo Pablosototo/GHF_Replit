@@ -20,6 +20,7 @@ tags:
   - name: facturas
   - name: usuarios
   - name: reportes
+  - name: configuracion
 
 paths:
   /healthz:
@@ -88,6 +89,66 @@ paths:
                 $ref: "#/components/schemas/SessionUser"
         "401":
           description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/marcas-login:
+    get:
+      operationId: getMarcasLogin
+      tags: [auth]
+      summary: Marcas disponibles para login (público)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarcaLoginItem"
+
+  /auth/locales-login:
+    get:
+      operationId: getLocalesLogin
+      tags: [auth]
+      summary: Locales de una marca para login (público)
+      parameters:
+        - in: query
+          name: marcaId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LocalLoginItem"
+
+  /auth/login-local:
+    post:
+      operationId: loginLocal
+      tags: [auth]
+      summary: Iniciar sesión como local
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginLocalBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          description: Credenciales inválidas
           content:
             application/json:
               schema:
@@ -779,6 +840,41 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Ok" }
 
+  # ------------------ CONFIGURACION ------------------
+  /configuracion:
+    get:
+      operationId: getConfiguracion
+      tags: [configuracion]
+      summary: Obtener configuración del sistema
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfiguracionItem"
+    put:
+      operationId: updateConfiguracion
+      tags: [configuracion]
+      summary: Actualizar configuración del sistema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfiguracionUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfiguracionItem"
+
 components:
   schemas:
     HealthStatus:
@@ -1181,3 +1277,45 @@ components:
         monto: { type: number, nullable: true }
         createdAt: { type: string }
       required: [tipo, id, titulo, createdAt]
+
+    MarcaLoginItem:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+      required: [id, nombre]
+
+    LocalLoginItem:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+      required: [id, nombre]
+
+    LoginLocalBody:
+      type: object
+      properties:
+        localId: { type: integer }
+        password: { type: string }
+      required: [localId, password]
+
+    ConfiguracionItem:
+      type: object
+      properties:
+        clave: { type: string }
+        valor: { type: string, nullable: true }
+        descripcion: { type: string, nullable: true }
+      required: [clave]
+
+    ConfiguracionUpdate:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              clave: { type: string }
+              valor: { type: string }
+            required: [clave, valor]
+      required: [items]

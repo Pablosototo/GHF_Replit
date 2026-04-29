@@ -328,6 +328,40 @@ export interface ActividadItem {
   createdAt: string;
 }
 
+export interface MarcaLoginItem {
+  id: number;
+  nombre: string;
+}
+
+export interface LocalLoginItem {
+  id: number;
+  nombre: string;
+}
+
+export interface LoginLocalBody {
+  localId: number;
+  password: string;
+}
+
+export interface ConfiguracionItem {
+  clave: string;
+  valor?: string | null;
+  descripcion?: string | null;
+}
+
+export type ConfiguracionUpdateItemsItem = {
+  clave: string;
+  valor: string;
+};
+
+export interface ConfiguracionUpdate {
+  items: ConfiguracionUpdateItemsItem[];
+}
+
+export type GetLocalesLoginParams = {
+  marcaId: number;
+};
+
 export type GetDashboardResumenParams = {
   dias?: number;
 };

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, asc, inArray, type SQL } from "drizzle-orm";
+import { sendPedidoNotification } from "../lib/email";
 import {
   db,
   pedidosTable,
@@ -210,7 +211,22 @@ router.post("/", async (req, res) => {
     usuarioId: user.id,
   });
 
-  res.status(201).json(await buildPedidoDto(pedido));
+  const dto = await buildPedidoDto(pedido);
+
+  void sendPedidoNotification({
+    id: pedido.id,
+    localNombre: dto.localNombre,
+    observaciones: pedido.observaciones,
+    total,
+    detalles: dto.detalles.map((d) => ({
+      productoNombre: d.productoNombre,
+      cantidad: d.cantidad,
+      precioUnitario: d.precioUnitario,
+      subtotal: d.subtotal,
+    })),
+  });
+
+  res.status(201).json(dto);
 });
 
 router.delete("/:id", async (req, res) => {

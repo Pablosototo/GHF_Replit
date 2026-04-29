@@ -7,3 +7,4 @@ export * from "./productos";
 export * from "./stock";
 export * from "./pedidos";
 export * from "./facturas";
+export * from "./configuracion";

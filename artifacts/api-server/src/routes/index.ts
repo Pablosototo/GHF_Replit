@@ -11,6 +11,7 @@ import stockRouter from "./stock";
 import pedidosRouter from "./pedidos";
 import facturasRouter from "./facturas";
 import usuariosRouter from "./usuarios";
+import configuracionRouter from "./configuracion";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use("/stock", stockRouter);
 router.use("/pedidos", pedidosRouter);
 router.use("/facturas", facturasRouter);
 router.use("/usuarios", usuariosRouter);
+router.use("/configuracion", configuracionRouter);
 
 export default router;

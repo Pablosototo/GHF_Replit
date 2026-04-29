@@ -53,6 +53,46 @@ export const GetMeResponse = zod.object({
 });
 
 /**
+ * @summary Marcas disponibles para login (público)
+ */
+export const GetMarcasLoginResponseItem = zod.object({
+  id: zod.number(),
+  nombre: zod.string(),
+});
+export const GetMarcasLoginResponse = zod.array(GetMarcasLoginResponseItem);
+
+/**
+ * @summary Locales de una marca para login (público)
+ */
+export const GetLocalesLoginQueryParams = zod.object({
+  marcaId: zod.coerce.number(),
+});
+
+export const GetLocalesLoginResponseItem = zod.object({
+  id: zod.number(),
+  nombre: zod.string(),
+});
+export const GetLocalesLoginResponse = zod.array(GetLocalesLoginResponseItem);
+
+/**
+ * @summary Iniciar sesión como local
+ */
+export const LoginLocalBody = zod.object({
+  localId: zod.number(),
+  password: zod.string(),
+});
+
+export const LoginLocalResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  username: zod.string(),
+  email: zod.string().nullish(),
+  role: zod.string(),
+  localId: zod.number().nullish(),
+  localNombre: zod.string().nullish(),
+});
+
+/**
  * @summary Métricas resumen
  */
 export const getDashboardResumenQueryDiasDefault = 30;
@@ -827,3 +867,34 @@ export const DeleteUsuarioParams = zod.object({
 export const DeleteUsuarioResponse = zod.object({
   ok: zod.boolean(),
 });
+
+/**
+ * @summary Obtener configuración del sistema
+ */
+export const GetConfiguracionResponseItem = zod.object({
+  clave: zod.string(),
+  valor: zod.string().nullish(),
+  descripcion: zod.string().nullish(),
+});
+export const GetConfiguracionResponse = zod.array(GetConfiguracionResponseItem);
+
+/**
+ * @summary Actualizar configuración del sistema
+ */
+export const UpdateConfiguracionBody = zod.object({
+  items: zod.array(
+    zod.object({
+      clave: zod.string(),
+      valor: zod.string(),
+    }),
+  ),
+});
+
+export const UpdateConfiguracionResponseItem = zod.object({
+  clave: zod.string(),
+  valor: zod.string().nullish(),
+  descripcion: zod.string().nullish(),
+});
+export const UpdateConfiguracionResponse = zod.array(
+  UpdateConfiguracionResponseItem,
+);

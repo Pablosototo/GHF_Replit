@@ -17,6 +17,7 @@ import {
   X,
   Utensils,
   FilePlus2,
+  Settings,
 } from "lucide-react";
 import { useGetMe, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -63,7 +64,10 @@ const ADMIN_NAV: NavSection[] = [
   },
   {
     title: "Sistema",
-    items: [{ name: "Usuarios", href: "/usuarios", icon: Users }],
+    items: [
+      { name: "Usuarios", href: "/usuarios", icon: Users },
+      { name: "Configuración", href: "/configuracion", icon: Settings },
+    ],
   },
 ];
 

@@ -21,10 +21,13 @@ import type {
   ApiError,
   Categoria,
   CategoriaInput,
+  ConfiguracionItem,
+  ConfiguracionUpdate,
   DashboardResumen,
   Factura,
   FacturaInput,
   GetDashboardResumenParams,
+  GetLocalesLoginParams,
   GetStockBajoParams,
   GetTopProductosParams,
   GetVentasPorDiaParams,
@@ -37,9 +40,12 @@ import type {
   ListStockParams,
   Local,
   LocalInput,
+  LocalLoginItem,
   LoginBody,
+  LoginLocalBody,
   Marca,
   MarcaInput,
+  MarcaLoginItem,
   Movimiento,
   MovimientoInput,
   Ok,
@@ -372,6 +378,261 @@ export function useGetMe<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Marcas disponibles para login (público)
+ */
+export const getGetMarcasLoginUrl = () => {
+  return `/api/auth/marcas-login`;
+};
+
+export const getMarcasLogin = async (
+  options?: RequestInit,
+): Promise<MarcaLoginItem[]> => {
+  return customFetch<MarcaLoginItem[]>(getGetMarcasLoginUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMarcasLoginQueryKey = () => {
+  return [`/api/auth/marcas-login`] as const;
+};
+
+export const getGetMarcasLoginQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMarcasLogin>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMarcasLogin>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMarcasLoginQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMarcasLogin>>> = ({
+    signal,
+  }) => getMarcasLogin({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMarcasLogin>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMarcasLoginQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMarcasLogin>>
+>;
+export type GetMarcasLoginQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Marcas disponibles para login (público)
+ */
+
+export function useGetMarcasLogin<
+  TData = Awaited<ReturnType<typeof getMarcasLogin>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMarcasLogin>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMarcasLoginQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Locales de una marca para login (público)
+ */
+export const getGetLocalesLoginUrl = (params: GetLocalesLoginParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/auth/locales-login?${stringifiedParams}`
+    : `/api/auth/locales-login`;
+};
+
+export const getLocalesLogin = async (
+  params: GetLocalesLoginParams,
+  options?: RequestInit,
+): Promise<LocalLoginItem[]> => {
+  return customFetch<LocalLoginItem[]>(getGetLocalesLoginUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLocalesLoginQueryKey = (params?: GetLocalesLoginParams) => {
+  return [`/api/auth/locales-login`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetLocalesLoginQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLocalesLogin>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetLocalesLoginParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLocalesLogin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLocalesLoginQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLocalesLogin>>> = ({
+    signal,
+  }) => getLocalesLogin(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLocalesLogin>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLocalesLoginQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLocalesLogin>>
+>;
+export type GetLocalesLoginQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Locales de una marca para login (público)
+ */
+
+export function useGetLocalesLogin<
+  TData = Awaited<ReturnType<typeof getLocalesLogin>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetLocalesLoginParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLocalesLogin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLocalesLoginQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Iniciar sesión como local
+ */
+export const getLoginLocalUrl = () => {
+  return `/api/auth/login-local`;
+};
+
+export const loginLocal = async (
+  loginLocalBody: LoginLocalBody,
+  options?: RequestInit,
+): Promise<SessionUser> => {
+  return customFetch<SessionUser>(getLoginLocalUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(loginLocalBody),
+  });
+};
+
+export const getLoginLocalMutationOptions = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginLocal>>,
+    TError,
+    { data: BodyType<LoginLocalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof loginLocal>>,
+  TError,
+  { data: BodyType<LoginLocalBody> },
+  TContext
+> => {
+  const mutationKey = ["loginLocal"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof loginLocal>>,
+    { data: BodyType<LoginLocalBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return loginLocal(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LoginLocalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof loginLocal>>
+>;
+export type LoginLocalMutationBody = BodyType<LoginLocalBody>;
+export type LoginLocalMutationError = ErrorType<ApiError>;
+
+/**
+ * @summary Iniciar sesión como local
+ */
+export const useLoginLocal = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginLocal>>,
+    TError,
+    { data: BodyType<LoginLocalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof loginLocal>>,
+  TError,
+  { data: BodyType<LoginLocalBody> },
+  TContext
+> => {
+  return useMutation(getLoginLocalMutationOptions(options));
+};
 
 /**
  * @summary Métricas resumen
@@ -4167,4 +4428,165 @@ export const useDeleteUsuario = <
   TContext
 > => {
   return useMutation(getDeleteUsuarioMutationOptions(options));
+};
+
+/**
+ * @summary Obtener configuración del sistema
+ */
+export const getGetConfiguracionUrl = () => {
+  return `/api/configuracion`;
+};
+
+export const getConfiguracion = async (
+  options?: RequestInit,
+): Promise<ConfiguracionItem[]> => {
+  return customFetch<ConfiguracionItem[]>(getGetConfiguracionUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetConfiguracionQueryKey = () => {
+  return [`/api/configuracion`] as const;
+};
+
+export const getGetConfiguracionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getConfiguracion>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getConfiguracion>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetConfiguracionQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getConfiguracion>>
+  > = ({ signal }) => getConfiguracion({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getConfiguracion>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetConfiguracionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getConfiguracion>>
+>;
+export type GetConfiguracionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Obtener configuración del sistema
+ */
+
+export function useGetConfiguracion<
+  TData = Awaited<ReturnType<typeof getConfiguracion>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getConfiguracion>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetConfiguracionQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Actualizar configuración del sistema
+ */
+export const getUpdateConfiguracionUrl = () => {
+  return `/api/configuracion`;
+};
+
+export const updateConfiguracion = async (
+  configuracionUpdate: ConfiguracionUpdate,
+  options?: RequestInit,
+): Promise<ConfiguracionItem[]> => {
+  return customFetch<ConfiguracionItem[]>(getUpdateConfiguracionUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(configuracionUpdate),
+  });
+};
+
+export const getUpdateConfiguracionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateConfiguracion>>,
+    TError,
+    { data: BodyType<ConfiguracionUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateConfiguracion>>,
+  TError,
+  { data: BodyType<ConfiguracionUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateConfiguracion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateConfiguracion>>,
+    { data: BodyType<ConfiguracionUpdate> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateConfiguracion(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateConfiguracionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateConfiguracion>>
+>;
+export type UpdateConfiguracionMutationBody = BodyType<ConfiguracionUpdate>;
+export type UpdateConfiguracionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Actualizar configuración del sistema
+ */
+export const useUpdateConfiguracion = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateConfiguracion>>,
+    TError,
+    { data: BodyType<ConfiguracionUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateConfiguracion>>,
+  TError,
+  { data: BodyType<ConfiguracionUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateConfiguracionMutationOptions(options));
 };
