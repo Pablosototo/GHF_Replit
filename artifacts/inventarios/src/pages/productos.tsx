@@ -75,6 +75,8 @@ const productoSchema = z.object({
   categoriaId: z.coerce.number().optional().nullable(),
   descripcion: z.string().optional().nullable(),
   precio: z.coerce.number().min(0, "El precio debe ser mayor o igual a 0"),
+  precioEntrada: z.coerce.number().min(0).optional().default(0),
+  presentacion: z.string().optional().nullable(),
   stockMinimo: z.coerce.number().int().min(0, "El stock mínimo debe ser mayor o igual a 0").optional().default(0),
   activo: z.boolean().default(true),
 });
@@ -109,6 +111,8 @@ export default function Productos() {
       categoriaId: null,
       descripcion: "",
       precio: 0,
+      precioEntrada: 0,
+      presentacion: "",
       stockMinimo: 0,
       activo: true,
     },
@@ -172,6 +176,8 @@ export default function Productos() {
       categoriaId: producto.categoriaId || null,
       descripcion: producto.descripcion || "",
       precio: producto.precio,
+      precioEntrada: (producto as any).precioEntrada ?? 0,
+      presentacion: (producto as any).presentacion || "",
       stockMinimo: producto.stockMinimo,
       activo: producto.activo,
     });
@@ -186,6 +192,8 @@ export default function Productos() {
       categoriaId: null,
       descripcion: "",
       precio: 0,
+      precioEntrada: 0,
+      presentacion: "",
       stockMinimo: 0,
       activo: true,
     });
@@ -253,8 +261,10 @@ export default function Productos() {
             <TableRow>
               <TableHead>SKU</TableHead>
               <TableHead>Nombre</TableHead>
+              <TableHead>Presentación</TableHead>
               <TableHead>Categoría</TableHead>
-              <TableHead className="text-right">Precio</TableHead>
+              <TableHead className="text-right">P. Entrada</TableHead>
+              <TableHead className="text-right">P. Salida</TableHead>
               <TableHead className="text-center">Stock Mín.</TableHead>
               <TableHead className="text-center">Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -265,8 +275,10 @@ export default function Productos() {
               <TableRow key={producto.id}>
                 <TableCell className="font-mono text-xs">{producto.sku || "-"}</TableCell>
                 <TableCell className="font-medium">{producto.nombre}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{(producto as any).presentacion || "-"}</TableCell>
                 <TableCell>{producto.categoriaNombre || "-"}</TableCell>
-                <TableCell className="text-right">{formatCurrency(producto.precio)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatCurrency((producto as any).precioEntrada ?? 0)}</TableCell>
+                <TableCell className="text-right font-medium">{formatCurrency(producto.precio)}</TableCell>
                 <TableCell className="text-center">{producto.stockMinimo}</TableCell>
                 <TableCell className="text-center">
                   {producto.activo ? (
@@ -295,7 +307,7 @@ export default function Productos() {
             ))}
             {productos?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   No se encontraron productos.
                 </TableCell>
               </TableRow>
@@ -378,13 +390,39 @@ export default function Productos() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="presentacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Presentación</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: TIRA x 100 UNI" {...field} value={field.value || ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="precioEntrada"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>P. Entrada</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="precio"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Precio Venta</FormLabel>
+                      <FormLabel>P. Salida</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} />
                       </FormControl>

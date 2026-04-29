@@ -12,6 +12,8 @@ export interface ProductoInput {
   sku?: string | null;
   descripcion?: string | null;
   precio: number;
+  precioEntrada?: number;
+  presentacion?: string | null;
   stockMinimo?: number;
   activo?: boolean;
 }
